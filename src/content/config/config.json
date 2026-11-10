@@ -11,16 +11,17 @@
     "footerTagline": "Greater together · Since 2019",
     "footerCopyrightSuffix": "A nonprofit mastermind"
   },
-  "form": {
-    "endpoint": "",
-    "successMessage": "Thank you! Your message has been sent successfully.",
-    "errorMessage": "Something went wrong. Please try again later."
+  "contactForm": {
+    "formspreeEndpoint": "https://formspree.io/f/xkjjdbok",
+    "heading": "Contact us",
+    "description": "Configure a unique Formspree endpoint for this site before enabling submissions.",
+    "buttonText": "Send Message",
+    "note": "This form remains disabled until its Formspree endpoint is configured.",
+    "subject": "Digital Growth Society contact form submission"
   },
   "codeInjection": {
-    "headStart": "",
-    "headEnd": "",
-    "bodyStart": "",
-    "bodyEnd": ""
+    "headerCode": "",
+    "footerCode": ""
   },
   "contactLinks": [],
   "footerStarfield": false
