@@ -13,6 +13,7 @@
 }
 
 .dgs-site-header__inner {
+  box-sizing: content-box;
   max-width: 1200px;
   margin: 0 auto;
   padding: 18px 24px;
@@ -69,6 +70,7 @@
 }
 
 .dgs-site-footer__inner {
+  box-sizing: content-box;
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 24px;
