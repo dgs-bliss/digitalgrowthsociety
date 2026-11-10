@@ -5,6 +5,9 @@
   "sourceCommit": "3e609512cdd276405b6f896155acf445e108d7f7",
   "destinationRepository": "https://github.com/dgs-bliss/digitalgrowthsociety",
   "site": "https://digitalgrowthsociety.blissdrive.net",
+  "tinaOrganization": "Digital Growth Society's Organization",
+  "tinaProjectClientId": "a2dd1914-54ed-4d17-8d5f-6c41aecacbde",
+  "tinaBranch": "main",
   "requestedRoutes": [
     "/",
     "/cookies-policy/",
