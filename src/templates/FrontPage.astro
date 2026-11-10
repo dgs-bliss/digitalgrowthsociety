@@ -1,235 +1,910 @@
 ---
-import { tinaField } from '@tinacms/astro/tina-field';
-import { getBlogPermalink } from '../lib/permalinks';
-import type { CmsBlog, CmsConfig } from '../lib/data';
+import '../styles/dgs-homepage-source.css';
 
-type Post = CmsBlog;
+const { data } = Astro.props;
+const blocks = Array.isArray(data?.blocks) ? data.blocks : [];
+const isHomepageTemplate = (block: any) => block?._template === 'homepageTemplate' || block?.__typename === 'PageBlocksHomepageTemplate';
+const homepage = blocks.find(isHomepageTemplate) ?? {};
+const sourceContent = homepage?.sourceContent ?? {};
 
-interface Props {
-  posts: Post[];
-  config?: CmsConfig | null;
-  data?: any;
-  editData?: any;
+function group(section: string): any {
+  return sourceContent?.[section] ?? {};
 }
-
-const { posts, data, editData } = Astro.props;
-const homepageBlocks = Array.isArray(data?.blocks) ? data.blocks : [];
-const editHomepageBlocks = Array.isArray(editData?.blocks) ? editData.blocks : [];
-const isHomepageTemplateBlock = (block: any) =>
-  block?._template === 'homepageTemplate' || block?.__typename === 'PageBlocksHomepageTemplate';
-const homepage = homepageBlocks.find(isHomepageTemplateBlock) ?? data?.homepage ?? {};
-const editHomepage = editHomepageBlocks.find(isHomepageTemplateBlock) ?? editData?.homepage ?? homepage;
-
-function tf(node: any, key: string) {
-  try {
-    return node ? tinaField(node, key) : undefined;
-  } catch (_error) {
-    return undefined;
-  }
+function byKey(items: any, key: string): any {
+  return Array.isArray(items) ? items.find((item: any) => item?.key === key) : null;
 }
-
-function value<T>(input: T | null | undefined, fallback: T): T {
-  return input === null || input === undefined || input === '' ? fallback : input;
+function text(section: string, key: string, fallback: string): string {
+  const value = byKey(group(section)?.texts, key)?.value;
+  return value === null || value === undefined || value === '' ? fallback : String(value);
 }
-
-function list<T>(input: T[] | null | undefined, fallback: T[]): T[] {
-  return Array.isArray(input) && input.length ? input : fallback;
+function asset(section: string, key: string, fallback: string): string {
+  const value = byKey(group(section)?.images, key)?.image;
+  return value === null || value === undefined || value === '' ? fallback : String(value);
 }
-
-function getReferenceLabel(reference: unknown): string | null {
-  if (!reference) return null;
-  if (Array.isArray(reference)) {
-    const labels: string[] = reference.map(getReferenceLabel).filter((label): label is string => Boolean(label));
-    return labels.length ? labels.join(', ') : null;
-  }
-  if (typeof reference === 'string') {
-    return reference.split('/').pop()?.replace(/\.(json|mdx?)$/, '').replace(/-/g, ' ') ?? null;
-  }
-  if (typeof reference === 'object' && reference) {
-    const record = reference as { title?: string | null; name?: string | null };
-    return record.title || record.name || null;
-  }
-  return null;
+function assetAlt(section: string, key: string, fallback: string): string {
+  const value = byKey(group(section)?.images, key)?.alt;
+  return value === null || value === undefined ? fallback : String(value);
 }
-
-function getPostUrl(post: Post) {
-  const url = getBlogPermalink(post);
-  return url.endsWith('/') ? url : url + '/';
+function link(section: string, key: string, fallback: string): string {
+  const value = byKey(group(section)?.links, key)?.url;
+  return value === null || value === undefined || value === '' ? fallback : String(value);
 }
-
-function getPostTitle(post: Post) {
-  return post.title || 'Untitled story';
-}
-
-function getPostDescription(post: Post) {
-  return post.description || 'Read the latest reporting from the newsroom.';
-}
-
-function getPostCategories(post: any) {
-  const categories = post?.categories;
-  if (Array.isArray(categories) && categories.length) return categories;
-  return post?.category ? [post.category] : [];
-}
-
-const hero = editHomepage.hero ?? homepage.hero ?? {};
-const why = homepage.why ?? {};
-const newsroom = homepage.newsroom ?? {};
-const wireFeature = homepage.wireFeature ?? {};
-const coverage = homepage.coverage ?? {};
-const contact = homepage.contact ?? {};
-const editHero = editHomepage.hero ?? hero;
-const editWhy = editHomepage.why ?? why;
-const editNewsroom = editHomepage.newsroom ?? newsroom;
-const editWireFeature = editHomepage.wireFeature ?? wireFeature;
-const editCoverage = editHomepage.coverage ?? coverage;
-const editContact = editHomepage.contact ?? contact;
-
-const featuredPosts = posts.slice(0, 3);
-const fallbackReportImages = [
-  '/brand-assets/83bb832b-c99f-45b5-9bc2-3d615f7d4c6a.jpg',
-  '/brand-assets/48aafe34-9438-4012-8c50-c9a8be1499c7.jpg',
-  '/brand-assets/5971f731-4646-49ca-998c-9d70b5d14e3d.jpg',
-];
-
-const standards = list(why.standards, [
-  { label: '01 / Accuracy', title: 'Accuracy ahead of speed', text: 'Every factual claim should be verifiable. We distinguish established facts from commentary, avoid presenting speculation as certainty, and correct material errors when identified.' },
-  { label: '02 / Clarity', title: 'Written for real people', text: 'Our articles are written for readers, not industry insiders. We avoid unnecessary jargon and present information in a straightforward way.' },
-  { label: '03 / Context', title: 'Meaningful context', text: 'Readers deserve content that explains key details and makes complicated topics easier to follow. Reporting, analysis, and opinion stay visibly distinct.' },
-]);
-
-const coverageTopics = list(coverage.topics, [
-  { number: '01', title: 'Business & Economy', text: 'Companies, markets, household economics, and the decisions that reach consumers.' },
-  { number: '02', title: 'Technology', text: 'Products, platforms, and advances changing how people work and communicate.' },
-  { number: '03', title: 'Health & Science', text: 'Research, medical developments, and findings that affect everyday choices.' },
-  { number: '04', title: 'Politics & Policy', text: 'Government, public affairs, and the decisions shaping the national conversation.' },
-  { number: '05', title: 'World', text: 'Developments abroad and the events with consequences that cross borders.' },
-  { number: '06', title: 'Lifestyle & Culture', text: 'Travel, education, culture, and the trends shaping how people live.' },
-]);
-
-const editorialStandards = [
-  { title: 'Accuracy', text: 'Every factual claim should be verifiable, supported by named sources or public records. Errors discovered after publication are corrected on the record.' },
-  { title: 'Attribution', text: 'Quoted persons are identified by name and role. Studies, records, and other reporting are credited and linked. Anonymity is never granted retroactively.' },
-  { title: 'Fairness', text: 'People and organizations covered receive a meaningful opportunity to respond before publication. Where the facts are clear, we report them regardless of preference.' },
-  { title: 'Independence', text: 'Editorial coverage is not influenced by advertising or sponsorship. Sponsors do not review, approve, or modify reporting before publication.' },
-  { title: 'Labeling', text: 'News is presented straight, analysis interprets it, and opinion reflects its writer. The three are tagged distinctly and visibly distinguishable at a glance.' },
-];
-
-const teamCards = list(contact.cards, [
-  { title: 'Editorial Lead', email: 'Editor-in-Chief', text: 'Leads editorial strategy, reporting standards, and publication quality.', accent: true },
-  { title: 'Managing Editor', email: 'Managing Editor', text: 'Runs day-to-day operations, the editorial calendar, and assignments.', accent: false },
-  { title: 'Standards Editor', email: 'Standards Editor', text: 'Fact-checks sensitive material and manages the corrections record.', accent: false },
-  { title: 'Business Editor', email: 'Business Editor', text: 'Runs the business desk and verifies reporting against underlying data.', accent: false },
-]);
-const teamImages = [
-  '/brand-assets/9b9d565c-4720-4313-8124-1c5b0962c481.jpg',
-  '/brand-assets/a7e46c80-fcbc-4895-958c-9db64571cae0.jpg',
-  '/brand-assets/b7138736-79a8-4f15-8b02-4a2cca5ed7a6.jpg',
-  '/brand-assets/aff9501c-b302-4049-832e-3b9703c1186e.jpg',
-];
 ---
 
-<main class="ffn-home">
-  <section class="hero" style={`background-image:url('${value(hero.image, '/brand-assets/c383ae02-84f6-4be0-8a77-47dee93ce41c.jpg')}')`} aria-labelledby="ffn-hero-title" data-tina-field={tf(editHero, 'image')}>
-    <div class="w">
-      <div class="hero-in">
-        <div class="hero-k"><b data-tina-field={tf(editHero, 'eyebrow')}>{value(hero.eyebrow, 'The Deep Dive')}</b><i data-tina-field={tf(editHero, 'buttonText')}>{value(hero.buttonText, 'Digital Growth Society')}</i></div>
-        <h1 id="ffn-hero-title" data-tina-field={tf(editHero, 'title')}>{value(hero.title, 'The Story Behind the Headlines That Shape Our World')}</h1>
-        <p class="hero-d" data-tina-field={tf(editHero, 'description')}>{value(hero.description, 'Digital Growth Society goes beyond breaking updates to explore the facts, context, and details behind the stories people are talking about.')}</p>
-      </div>
-    </div>
-  </section>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Public+Sans:wght@300;400;500;600;700&family=Sora:wght@700;800&display=swap" />
+<main class="dgs-source-home">
+<!-- HERO -->
+<section id="top" style={`padding: 88px 0 104px; color: #FFFFFF; background: linear-gradient(100deg, rgba(10, 34, 64, 0.94) 0%, rgba(10, 34, 64, 0.82) 55%, rgba(10, 34, 64, 0.6) 100%), url('${asset("hero","image-background","/brand-assets/dgs-homepage/photos/hero-fishing.jpg")}') center 60% / cover no-repeat`}>
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px">
+<div style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 26px">
+<p style="margin: 0; display: inline-flex; align-self: flex-start; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #C9D6E8; padding: 0"><span style="width: 28px; height: 1px; background: #C9D6E8"></span>{text("hero","text-the-digital-growth-society-since-2019","The Digital Growth Society · Since 2019")}</p>
+<h1 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(44px, 6vw, 80px); line-height: 1.02; letter-spacing: -0.015em">{text("hero","text-twelve-operators","Twelve operators.")}<br>{text("hero","text-one-table","One table.")}<br><em style="color: #C9D6E8">{text("hero","text-every-friday","Every Friday.")}</em></h1>
+<p style="margin: 0; max-width: 560px; font-size: 22px; line-height: 1.6; color: #DCE4EE">{text("hero","text-where-seo-s-next-playbook-gets-proven-first-agen","Where SEO's next playbook gets proven first. Agency owners who started in SEO and now spend their Fridays in the lab together, testing what's next in AI.")}</p>
+<div class="hero-cta" style="display: flex; flex-wrap: wrap; gap: 14px">
+<a href={link("hero","link-apply","#apply")} style="text-transform: uppercase; letter-spacing: 0.08em; background: #FFFFFF; color: #0A2240; text-decoration: none; font-weight: 600; font-size: 16px; padding: 16px 26px; border-radius: 2px">{text("hero","text-apply-to-speak","Apply to speak")}</a>
+<a href={link("hero","link-members","#members")} style="text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.6); color: #FFFFFF; text-decoration: none; font-weight: 500; font-size: 16px; padding: 16px 26px; border-radius: 2px">{text("hero","text-meet-the-dozen","Meet the Dozen")}</a>
+</div>
+</div>
+<!-- Ring of members -->
+<div style="flex: 1 1 380px; min-width: 0; display: flex; justify-content: center">
+<div style="position: relative; width: min(440px, 100%); aspect-ratio: 1 / 1">
+<div style="position: absolute; inset: 10%; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25)"></div>
 
-  <section class="rp" aria-labelledby="featured-reporting-title">
-    <div class="w">
-      <div class="eye"><i></i><span data-tina-field={tf(editNewsroom, 'subheading')}>{value(newsroom.subheading, 'Published this week')}</span></div>
-      <h2 class="h2" id="featured-reporting-title" data-tina-field={tf(editNewsroom, 'heading')}>{value(newsroom.heading, 'Featured reporting')}</h2>
-      <div class="rp-g">
-        {featuredPosts.map((post, index) => (
-          <a href={getPostUrl(post)} class="rpi">
-            <div class="rpi-img" style={`background-image:url('${post.heroImage || fallbackReportImages[index % fallbackReportImages.length]}')`}></div>
-            <div class="rpi-c">
-              <div class="rpi-k">{getReferenceLabel(getPostCategories(post)) || 'Featured'}</div>
-              <div class="rpi-h">{getPostTitle(post)}</div>
-              <p class="rpi-x">{getPostDescription(post)}</p>
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
+<img src={asset("hero","image-richard-fong","/brand-assets/dgs-homepage/ring/richard-fong.jpg")} alt={assetAlt("hero","image-richard-fong","Richard Fong")} style="position: absolute; left: 40.45%; top: 0.00%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
 
-  <section class="ms" aria-labelledby="mission-title">
-    <div class="w">
-      <div class="ms-in">
-        <div>
-          <div class="eye"><i></i><span data-tina-field={tf(editWhy, 'eyebrow')}>{value(why.eyebrow, 'Our mission')}</span></div>
-          <h2 id="mission-title" data-tina-field={tf(editWhy, 'title')}>{value(why.title, 'More than headlines. Context that holds up.')}</h2>
-        </div>
-        <p class="ms-lead" data-tina-field={tf(editWhy, 'paragraphOne')}>{value(why.paragraphOne, 'Digital Growth Society is a general news platform created for readers who want to understand what is happening without wading through unnecessary noise — timely stories, emerging trends, and developments that affect everyday life.')}</p>
-      </div>
-      <div class="ms-slab"><i>&ldquo;</i><p data-tina-field={tf(editWhy, 'paragraphTwo')}>{value(why.paragraphTwo, 'A headline may capture attention. It rarely tells the whole story.')}</p></div>
-      <div class="ms-g">
-        {standards.map((item, index) => {
-          const editItem = editWhy?.standards?.[index] ?? item;
-          return <div class="ms-i"><div class="ms-n" data-tina-field={tf(editItem, 'label')}>{item.label}</div><div class="ms-t" data-tina-field={tf(editItem, 'title')}>{item.title}</div><p class="ms-x" data-tina-field={tf(editItem, 'text')}>{item.text}</p></div>;
-        })}
-      </div>
-    </div>
-  </section>
+<img src={asset("hero","image-chris-koszo","/brand-assets/dgs-homepage/ring/chris-koszo.jpg")} alt={assetAlt("hero","image-chris-koszo","Chris Koszo")} style="position: absolute; left: 60.68%; top: 5.42%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
 
-  <section class="cv" aria-labelledby="coverage-title">
-    <div class="w">
-      <div class="cv-h">
-        <div><div class="eye"><i></i><span>Coverage areas</span></div><h2 class="h2" id="coverage-title" data-tina-field={tf(editCoverage, 'title')}>{value(coverage.title, 'What we cover')}</h2></div>
-        <p class="cv-lead" data-tina-field={tf(editCoverage, 'description')}>{value(coverage.description, 'Six desks, each staffed by an editor who reads the source material before the story runs.')}</p>
-      </div>
-      <div class="cv-in">
-        <figure class="cv-fig">
-          <div class="cv-img" style="background-image:url('/brand-assets/327816c1-cb4e-4c47-8da2-42877a448f1d.jpg')"></div>
-          <figcaption class="cv-cap"><p>Why does this story matter?</p><span>The question behind all six desks</span></figcaption>
-        </figure>
-        <div class="cv-l">
-          {coverageTopics.map((item, index) => {
-            const editItem = editCoverage?.topics?.[index] ?? item;
-            return <a href="/blog/" class="cvr"><div class="cvr-n" data-tina-field={tf(editItem, 'number')}>{item.number}</div><div><div class="cvr-t" data-tina-field={tf(editItem, 'title')}>{item.title}</div><p class="cvr-x" data-tina-field={tf(editItem, 'text')}>{item.text}</p></div></a>;
-          })}
-        </div>
-      </div>
-    </div>
-  </section>
+<img src={asset("hero","image-andrew-ansley","/brand-assets/dgs-homepage/ring/andrew-ansley.jpg")} alt={assetAlt("hero","image-andrew-ansley","Andrew Ansley")} style="position: absolute; left: 75.49%; top: 20.23%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
 
-  <section class="qt" style={`background-image:url('${value(wireFeature.image, '/brand-assets/28d50137-5e19-405a-81aa-7ad369692f45.jpg')}')`} aria-labelledby="editorial-commitment-title" data-tina-field={tf(editWireFeature, 'image')}>
-    <div class="w"><div class="qt-in">
-      <div class="qt-m" id="editorial-commitment-title" data-tina-field={tf(editWireFeature, 'eyebrow')}>{value(wireFeature.eyebrow, 'Our Editorial Commitment')}</div>
-      <p class="qt-q" data-tina-field={tf(editWireFeature, 'quote')}>{value(wireFeature.quote, 'We will not just report what happened. We will help you understand what comes next.')}</p>
-      <div class="qt-by"><div class="qt-n" data-tina-field={tf(editWireFeature, 'author')}>{value(wireFeature.author, 'Editorial Team')}</div><div class="qt-r" data-tina-field={tf(editWireFeature, 'byline')}>{value(wireFeature.byline, 'Reporting, editing, and standards')}</div></div>
-    </div></div>
-  </section>
+<img src={asset("hero","image-brian-winum","/brand-assets/dgs-homepage/ring/brian-winum.jpg")} alt={assetAlt("hero","image-brian-winum","Brian Winum")} style="position: absolute; left: 80.91%; top: 40.45%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
 
-  <section class="st" aria-labelledby="standards-title">
-    <div class="w">
-      <div class="eye"><i></i><span>How we work</span></div>
-      <h2 class="h2" id="standards-title">Editorial standards</h2>
-      <div class="st-doc">
-        <div class="st-top"><span>The Digital Growth Society Standard</span><b>Five rules we do not break</b></div>
-        <div class="st-body">
-          {editorialStandards.map((item) => <p class="st-p"><b>{item.title}</b>{item.text}</p>)}
-        </div>
-        <div class="st-sign"><div class="st-sn">Signed — the editors of Digital Growth Society</div><div class="st-sd">Revised August 2026</div></div>
-      </div>
-    </div>
-  </section>
+<img src={asset("hero","image-chris-castillo","/brand-assets/dgs-homepage/ring/chris-castillo.jpg")} alt={assetAlt("hero","image-chris-castillo","Chris Castillo")} style="position: absolute; left: 75.49%; top: 60.68%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
 
-  <section class="tm" aria-labelledby="team-title">
-    <div class="w">
-      <div class="eye"><i></i><span data-tina-field={tf(editContact, 'eyebrow')}>{value(contact.eyebrow, 'Our team')}</span></div>
-      <h2 class="h2" id="team-title" data-tina-field={tf(editContact, 'title')}>{value(contact.title, 'Who does the reporting')}</h2>
-      <div class="tm-g">
-        {teamCards.map((person, index) => {
-          const editPerson = editContact?.cards?.[index] ?? person;
-          return <div class="tmi"><img class="tmi-img" src={teamImages[index % teamImages.length]} alt={person.title || ''} /><div class="tmi-b"><div class="tmi-n" data-tina-field={tf(editPerson, 'title')}>{person.title}</div><div class="tmi-r" data-tina-field={tf(editPerson, 'email')}>{person.email}</div><p class="tmi-x" data-tina-field={tf(editPerson, 'text')}>{person.text}</p></div></div>;
-        })}
-      </div>
-    </div>
-  </section>
+<img src={asset("hero","image-chas-henry","/brand-assets/dgs-homepage/ring/chas-henry.jpg")} alt={assetAlt("hero","image-chas-henry","Chas Henry")} style="position: absolute; left: 60.68%; top: 75.49%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-chris-labbate","/brand-assets/dgs-homepage/ring/chris-labbate.jpg")} alt={assetAlt("hero","image-chris-labbate","Chris Labbate")} style="position: absolute; left: 40.45%; top: 80.91%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-cory-hubbell","/brand-assets/dgs-homepage/ring/cory-hubbell.jpg")} alt={assetAlt("hero","image-cory-hubbell","Cory Hubbell")} style="position: absolute; left: 20.23%; top: 75.49%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-mike-merlino","/brand-assets/dgs-homepage/ring/mike-merlino.jpg")} alt={assetAlt("hero","image-mike-merlino","Mike Merlino")} style="position: absolute; left: 5.42%; top: 60.68%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-brian-kato","/brand-assets/dgs-homepage/ring/brian-kato.jpg")} alt={assetAlt("hero","image-brian-kato","Brian Kato")} style="position: absolute; left: 0.00%; top: 40.45%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #C9D6E8; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-brian-hong","/brand-assets/dgs-homepage/ring/brian-hong.jpg")} alt={assetAlt("hero","image-brian-hong","Brian Hong")} style="position: absolute; left: 5.42%; top: 20.23%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #C9D6E8; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<img src={asset("hero","image-simon-cornelius","/brand-assets/dgs-homepage/ring/simon-cornelius.jpg")} alt={assetAlt("hero","image-simon-cornelius","Simon Cornelius")} style="position: absolute; left: 20.23%; top: 5.42%; width: 19.09%; height: 19.09%; box-sizing: border-box; border-radius: 50%; object-fit: cover; border: 3px solid #C9D6E8; background: #FFFFFF; box-shadow: 0 8px 20px rgba(11, 22, 38, 0.15)">
+
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+<span style="font-family: Sora, sans-serif; font-weight: 800; font-size: clamp(36px, 11vw, 64px); letter-spacing: -0.06em; line-height: 1; color: #FFFFFF">{text("hero","text-dgs","DGS")}</span>
+<span style="font-size: clamp(9px, 2.6vw, 12px); font-weight: 600; letter-spacing: 0.16em; color: #C9D6E8">{text("hero","text-the-distinguished-dozen","THE DISTINGUISHED DOZEN")}</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- STATS -->
+<section style="border-top: 1px solid #DADFE3; border-bottom: 1px solid #DADFE3; background: #F5F8FC">
+<div class="stats" style="max-width: 1200px; margin: 0 auto; padding: 36px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 40px; letter-spacing: -0.015em">{text("stats","text-12","12")}</span><span style="font-size: 17px; color: #4E5761">{text("stats","text-agency-owners-at-the-table","agency owners at the table")}</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 40px; letter-spacing: -0.015em">{text("stats","text-700","700+")}</span><span style="font-size: 17px; color: #4E5761">{text("stats","text-hours-together-since-2019-every-friday-and-every","hours together since 2019, every Friday and every retreat")}</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 40px; letter-spacing: -0.015em">{text("stats","text-21","21")}</span><span style="font-size: 17px; color: #4E5761">{text("stats","text-expert-guests-and-advisors","expert guests and advisors")}</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 40px; letter-spacing: -0.015em">{text("stats","text-1998","1998")}</span><span style="font-size: 17px; color: #4E5761">{text("stats","text-in-seo-since-the-year-google-launched","in SEO since the year Google launched")}</span></div>
+</div>
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px 30px">
+<p style="margin: 0; padding-top: 22px; border-top: 1px solid #DADFE3; font-size: 17px; line-height: 1.6; color: #4E5761"><strong style="color: #0A2240; font-weight: 600">{text("stats","text-9-of-our-12-members-speak-at-industry-conference","9 of our 12 members speak at industry conferences.")}</strong>{text("stats","text-two-co-organize-seo-rockstars-and-several-teach-"," Two co-organize SEO Rockstars, and several teach their own courses, workshops and communities.")}</p>
+</div>
+</section>
+
+<!-- FRIDAY -->
+<section style="padding: 96px 0 0">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 28px">
+<div class="shead" style="gap: 20px 64px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 640px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("friday","text-every-friday-since-2019","Every Friday since 2019")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("friday","text-this-is-what-friday-looks-like","This is what Friday looks like.")}</h2>
+</div>
+<p style="margin: 0; max-width: 420px; font-size: 19px; line-height: 1.65; color: #4E5761">{text("friday","text-every-call-opens-the-same-way-around-the-table-e","Every call opens the same way: around the table, each of us shares a gratitude, a gap and a focus for the week. Then come hot seats, demos and whichever rabbit hole is worth going down.")}</p>
+</div>
+<img class="zoomshot" src={asset("friday","image-dgs-members-waving-on-a-friday-zoom-call","/brand-assets/dgs-homepage/photos/friday-zoom.jpg")} alt={assetAlt("friday","image-dgs-members-waving-on-a-friday-zoom-call","DGS members waving on a Friday Zoom call")} style="display: block; width: 100%; height: auto; border-radius: 2px; border: 1px solid #DADFE3">
+</div>
+</section>
+
+<!-- MISSION + VALUES -->
+<section id="values" style="padding: 112px 0; background: #0A2240; color: #FFFFFF">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 72px">
+<div style="display: flex; flex-direction: column; gap: 18px; max-width: 860px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #9DB8DA">{text("mission","text-our-mission","Our mission")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(32px, 3.8vw, 50px); line-height: 1.12; letter-spacing: -0.015em">{text("mission","text-empowering-digital-entrepreneurs-to-grow-togethe","Empowering digital entrepreneurs to grow together with generosity, dependability and fun.")}</h2>
+<p style="margin: 0; font-size: 19px; line-height: 1.65; color: #C9D6E8">{text("mission","text-a-non-profit-society-that-brings-masters-of-thei","A non-profit society that brings masters of their craft together to take SEO to the next level in results, business and lifestyle. Not just tactics, but the strategic frameworks behind them.")}</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); padding-bottom: 18px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #9DB8DA">{text("mission","text-our-core-value","Our core value")}</p>
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-style: italic; font-size: 22px; color: #C9D6E8">{text("mission","text-greater-together","Greater together.")}</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 40px 0">
+
+<div style="padding: 0 28px 0 0; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 300; font-size: clamp(88px, 9vw, 128px); line-height: 0.9; color: #FFFFFF">{text("mission","text-l","L")}</span>
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px; letter-spacing: -0.01em">{text("mission","text-loyalty","Loyalty")}</span>
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #9DB8DA; line-height: 1.5">{text("mission","text-integrity-confidentiality-and-commitment","Integrity, confidentiality and commitment")}</span>
+<span style="font-size: 17px; line-height: 1.6; color: #C9D6E8">{text("mission","text-what-is-said-at-the-table-stays-at-the-table","What is said at the table stays at the table.")}</span>
+</div>
+
+<div style="padding: 0 28px 0 0; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 300; font-size: clamp(88px, 9vw, 128px); line-height: 0.9; color: #FFFFFF">{text("mission","text-o","O")}</span>
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px; letter-spacing: -0.01em">{text("mission","text-obsession","Obsession")}</span>
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #9DB8DA; line-height: 1.5">{text("mission","text-passion-focus-and-big-goals","Passion, focus and big goals")}</span>
+<span style="font-size: 17px; line-height: 1.6; color: #C9D6E8">{text("mission","text-everyone-shows-up-having-done-the-work","Everyone shows up having done the work.")}</span>
+</div>
+
+<div style="padding: 0 28px 0 0; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 300; font-size: clamp(88px, 9vw, 128px); line-height: 0.9; color: #FFFFFF">{text("mission","text-v","V")}</span>
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px; letter-spacing: -0.01em">{text("mission","text-value-add","Value add")}</span>
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #9DB8DA; line-height: 1.5">{text("mission","text-sharing-smart-tips-and-strong-networks","Sharing, smart tips and strong networks")}</span>
+<span style="font-size: 17px; line-height: 1.6; color: #C9D6E8">{text("mission","text-real-numbers-real-playbooks-and-introductions-th","Real numbers, real playbooks and introductions that matter.")}</span>
+</div>
+
+<div style="padding: 0 28px 0 0; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 300; font-size: clamp(88px, 9vw, 128px); line-height: 0.9; color: #FFFFFF">{text("mission","text-e","E")}</span>
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px; letter-spacing: -0.01em">{text("mission","text-encourage","Encourage")}</span>
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #9DB8DA; line-height: 1.5">{text("mission","text-support-care-and-confidence","Support, care and confidence")}</span>
+<span style="font-size: 17px; line-height: 1.6; color: #C9D6E8">{text("mission","text-especially-when-a-bet-doesn-t-pay-off","Especially when a bet doesn’t pay off.")}</span>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<!-- ON THE TABLE -->
+<section id="table" style="padding: 104px 0">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 44px">
+<div class="shead" style="gap: 20px 64px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 640px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("topics","text-on-the-table-this-year","On the table this year")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("topics","text-a-brotherhood-built-on-shared-knowledge","A brotherhood built on shared knowledge.")}</h2>
+</div>
+<p style="margin: 0; max-width: 420px; font-size: 19px; line-height: 1.65; color: #4E5761">{text("topics","text-nobody-builds-on-their-own-island-what-one-membe","Nobody builds on their own island. What one member builds in the lab, the rest of us test, push back on and help get dialed in, so ideas are proven on real accounts before they reach yours.")}</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-01","01")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-autonomous-seo-agents","Autonomous SEO agents")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-agents-that-build-pages-fix-errors-and-ship-clie","Agents that build pages, fix errors and ship client sites in days, with no one at the keyboard.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-02","02")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-ai-search-visibility","AI search visibility")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-what-gets-a-brand-cited-by-chatgpt-gemini-and-go","What gets a brand cited by ChatGPT, Gemini and Google’s AI answers, and how to prove who published it first.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-03","03")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-schema-and-entities-at-scale","Schema and entities at scale")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-machine-readable-sites-that-search-engines-and-a","Machine-readable sites that search engines and AI models understand without guessing.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-04","04")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-building-the-ai-stack","Building the AI stack")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-which-models-tools-and-hardware-are-worth-paying","Which models, tools and hardware are worth paying for, and how to keep token costs from running away.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-05","05")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-selling-ai-to-clients","Selling AI to clients")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-packaging-ai-into-services-owners-will-pay-for-i","Packaging AI into services owners will pay for, including outcome-based deals.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-06","06")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-security-for-the-ai-era","Security for the AI era")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-backups-hardening-and-agents-that-catch-attacks-","Backups, hardening and agents that catch attacks before a client loses a lead.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-07","07")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-running-great-agencies","Running great agencies")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-sales-hiring-and-client-service-including-warrio","Sales, hiring and client service, including warrior mode when the pipeline slows.")}</p>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 600; color: #1F4E8C">{text("topics","text-08","08")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.01em">{text("topics","text-net-worth-and-legacy","Net worth and legacy")}</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("topics","text-turning-agency-profits-into-lasting-wealth-and-w","Turning agency profits into lasting wealth, and what we give back along the way.")}</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- MEMBERS -->
+<section id="members" style="padding: 104px 0; background: #F5F8FC; border-top: 1px solid #DADFE3; border-bottom: 1px solid #DADFE3">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 44px">
+<div class="shead" style="gap: 20px 64px">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("members","text-the-dozen","The Dozen")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("members","text-who-s-at-the-table","Who's at the table")}</h2>
+</div>
+<p style="margin: 0; max-width: 420px; font-size: 19px; line-height: 1.65; color: #4E5761">{text("members","text-every-member-runs-their-own-firm-seats-open-only","Every member runs their own firm. Seats open only when a member steps back, and the current Dozen votes in a new member from the past guests on our Master Council.")}</p>
+</div>
+<div class="mgrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px">
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-richard-fong","/brand-assets/dgs-homepage/members/richard-fong.jpg")} alt={assetAlt("members","image-richard-fong","Richard Fong")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+<span style="position: absolute; left: 14px; top: 14px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #FFFFFF; background: #0A2240; border-radius: 2px; padding: 5px 10px">{text("members","text-host-of-dgs","Host of DGS")}</span>
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-compounder","The Compounder")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-richard-fong","Richard Fong")}</h3>
+<a href={link("members","link-www-blissdrive-com","https://www.blissdrive.com")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-bliss-drive-california","Founder, Bliss Drive · California")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-came-to-seo-from-finance-and-runs-every-campaign","Came to SEO from finance and runs every campaign like a portfolio: steady gains that stack on each other. Has compounded Bliss Drive into a 7-figure agency. As host of DGS, he runs the Friday table and keeps the accountability round honest.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #FFFFFF; background: #0A2240; border: 1px solid #0A2240; border-radius: 2px; padding: 4px 8px">{text("members","text-host-digital-growth-society","Host · Digital Growth Society")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker","Conference speaker")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-chris-koszo","/brand-assets/dgs-homepage/members/chris-koszo.jpg")} alt={assetAlt("members","image-chris-koszo","Chris Koszo")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-lone-star-sharpshooter","The Lone Star Sharpshooter")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-chris-koszo","Chris Koszo")}</h3>
+<a href={link("members","link-search1agency-com","https://search1agency.com")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-search-1-agency-texas","Founder, Search 1 Agency · Texas")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-a-one-man-shop-with-big-firm-aim-lands-1-ranking","A one-man shop with big-firm aim. Lands #1 rankings for lawyers in some of the toughest legal markets, consults on enterprise and international SEO for brands like Cathay Pacific, Purina and Microsoft, and once outranked NASA.gov just for fun.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-2","Conference speaker")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-andrew-ansley","/brand-assets/dgs-homepage/members/andrew-ansley.jpg")} alt={assetAlt("members","image-andrew-ansley","Andrew Ansley")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-autopilot","The Autopilot")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-andrew-ansley","Andrew Ansley")}</h3>
+<a href={link("members","link-link","#")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-thorbit-colorado","Founder, Thorbit · Colorado")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-philosophy-grad-turned-entity-seo-authority-who-","Philosophy grad turned entity-SEO authority who built and sold an agency. Now building Thorbit, an SEO agent that runs a site on its own: building pages, writing schema, fixing errors and submitting to Google and Bing around the clock.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-3","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-founder-vibe-coder-community","Founder · Vibe Coder community")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-creator-mcpscraper","Creator · MCPScraper")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-brian-winum","/brand-assets/dgs-homepage/members/brian-winum.jpg")} alt={assetAlt("members","image-brian-winum","Brian Winum")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-authority-stacker","The Authority Stacker")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-brian-winum","Brian Winum")}</h3>
+<a href={link("members","link-brianwinum-com","https://brianwinum.com")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-partner-maxburst-maxplaces-new-york","Partner, MAXBURST & MAXPlaces · New York")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-building-brands-in-search-since-1998-and-a-four-","Building brands in search since 1998 and a four-time SEO Spring Training speaker. His WP Content Ledger signs every post and timestamps it on the Bitcoin blockchain, so authorship can be proven.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-4","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-creator-authority-amplifier","Creator · Authority Amplifier")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-chris-castillo","/brand-assets/dgs-homepage/members/chris-castillo.jpg")} alt={assetAlt("members","image-chris-castillo","Chris Castillo")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-agent-architect","The Agent Architect")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-chris-castillo","Chris Castillo")}</h3>
+<a href={link("members","link-propeldigitalmarketing-ca","https://propeldigitalmarketing.ca/")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-propel-digital-marketing-ontario","Founder, Propel Digital Marketing · Ontario")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-runs-his-agency-with-a-team-of-ai-agents-each-wi","Runs his agency with a team of AI agents, each with a name: Neo handles support, Cypher writes the code and Vector runs SEO. Strategy built around ROI and conversion.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-host-web-development-community","Host · Web development community")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-chas-henry","/brand-assets/dgs-homepage/members/chas-henry.jpg")} alt={assetAlt("members","image-chas-henry","Chas Henry")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-local-legend","The Local Legend")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-chas-henry","Chas Henry")}</h3>
+<a href={link("members","link-link-2","#")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-owner-c-h-local-media-mississippi","Owner, C.H. Local Media · Mississippi")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-local-seo-for-small-and-mid-size-businesses-acro","Local SEO for small and mid-size businesses across the Tupelo area. Ranked a top web design firm in Mississippi by DesignRush.")}</p>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-chris-labbate","/brand-assets/dgs-homepage/members/chris-labbate.jpg")} alt={assetAlt("members","image-chris-labbate","Chris Labbate")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-captain-canada","Captain Canada")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-chris-labbate","Chris Labbate")}</h3>
+<a href={link("members","link-seobank-ca","https://seobank.ca")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-seobank-ontario","Founder, SEOBANK · Ontario")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-started-doing-seo-in-1998-the-same-year-google-w","Started doing SEO in 1998, the same year Google was founded. Built master-metrics.com in-house, migrates 4,000-page stores without losing rankings, and still takes pages to #1 with entities and advanced schema.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-5","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-creator-master-metrics","Creator · Master Metrics")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-cory-hubbell","/brand-assets/dgs-homepage/members/cory-hubbell.jpg")} alt={assetAlt("members","image-cory-hubbell","Cory Hubbell")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-inventor","The Inventor")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-cory-hubbell","Cory Hubbell")}</h3>
+<a href={link("members","link-entityclouds-com","https://entityclouds.com")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-entity-clouds-texas","Founder, Entity Clouds · Texas")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-builds-his-own-ai-instead-of-renting-it-his-agen","Builds his own AI instead of renting it. His agents write schema, ship top-shelf client sites in a day or two, and hunt down server attacks. If a tool isn’t open, he builds a better one.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-6","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-creator-schema-brains","Creator · Schema Brains")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-mike-merlino","/brand-assets/dgs-homepage/members/mike-merlino.jpg")} alt={assetAlt("members","image-mike-merlino","Mike Merlino")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-hype-man","The Hype Man")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-mike-merlino","Mike Merlino")}</h3>
+<a href={link("members","link-link-3","#")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-merlino-marketing-florida","Founder, Merlino Marketing · Florida")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-straight-talk-and-big-energy-a-cmo-by-trade-and-","Straight talk and big energy. A CMO by trade and co-founder of Pocket Marketer who measures SEO in dollars per call. Believes he who has the compute wins, so he runs his own hardware and local AI models.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #FFFFFF; background: #0A2240; border: 1px solid #0A2240; border-radius: 2px; padding: 4px 8px">{text("members","text-co-organizer-seo-rockstars","Co-organizer · SEO Rockstars")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-7","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-instructor-workshops-courses","Instructor · Workshops & courses")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-brian-kato","/brand-assets/dgs-homepage/members/brian-kato.jpg")} alt={assetAlt("members","image-brian-kato","Brian Kato")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-rock-star","The Rock Star")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-brian-kato","Brian Kato")}</h3>
+<a href={link("members","link-link-4","#")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-fusion-vine-colorado","Founder, Fusion Vine · Colorado")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-former-bmi-affiliated-rock-frontman-turned-brand","Former BMI-affiliated rock frontman turned brand-SEO strategist, and still touring: now it’s the 2026 SEO Tour, teaching cohorts from the U.S. to London. Works where cybersecurity meets marketing.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-8","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-instructor-workshops-courses-2","Instructor · Workshops & courses")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-brian-hong","/brand-assets/dgs-homepage/members/brian-hong.jpg")} alt={assetAlt("members","image-brian-hong","Brian Hong")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-dealmaker","The Dealmaker")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-brian-hong","Brian Hong")}</h3>
+<a href={link("members","link-www-infintechdesigns-com","https://www.infintechdesigns.com")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-founder-infintech-designs-louisiana","Founder, Infintech Designs · Louisiana")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-in-seo-since-2000-now-building-ai-revenue-engine","In SEO since 2000. Now building AI revenue engines, including Flowbots and an intent-data product that turns cold outreach into booked appointments. Prefers to get paid on outcomes.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #FFFFFF; background: #0A2240; border: 1px solid #0A2240; border-radius: 2px; padding: 4px 8px">{text("members","text-co-organizer-seo-rockstars-2","Co-organizer · SEO Rockstars")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-creator-flowbots","Creator · Flowbots")}</span>
+
+</div>
+
+</div>
+</article>
+
+<article class="mcard" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; overflow: hidden; display: flex; flex-direction: column">
+<div class="mphoto" style="position: relative">
+<img src={asset("members","image-simon-cornelius","/brand-assets/dgs-homepage/members/simon-cornelius.jpg")} alt={assetAlt("members","image-simon-cornelius","Simon Cornelius")} style="display: block; width: 100%; aspect-ratio: 10 / 11; object-fit: cover; background: #F5F8FC">
+
+</div>
+<div class="mbody" style="padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+<div class="mhead" style="display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; color: #1F4E8C">{text("members","text-the-lazy-coder","The Lazy Coder")}</p>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 21px; letter-spacing: -0.015em">{text("members","text-simon-cornelius","Simon Cornelius")}</h3>
+<a href={link("members","link-link-5","#")} style="align-self: flex-start; font-size: 15px; font-weight: 500; color: #1F4E8C; text-decoration: underline; text-decoration-color: #C3CAD1; text-underline-offset: 3px">{text("members","text-local-seo-schema-engineer-texas","Local SEO & schema engineer · Texas")}</a>
+</div>
+<p class="mbio" style="margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: #4E5761">{text("members","text-a-self-described-introvert-who-loves-networking-","A self-described introvert who loves networking, and an engineer at heart: if he has to do something twice, he writes a tool for it. Built his own accounting app in an afternoon rather than pay for one, and teaches an Entities & Schema course.")}</p>
+
+<div class="mbadges" style="margin-top: auto; padding-top: 14px; border-top: 1px solid #E6EAEF; display: flex; flex-wrap: wrap; gap: 6px">
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-conference-speaker-9","Conference speaker")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-instructor-entities-schema","Instructor · Entities & Schema")}</span>
+
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: #0A2240; background: #FFFFFF; border: 1px solid #C3CAD1; border-radius: 2px; padding: 4px 8px">{text("members","text-level-7-google-local-guide","Level 7 · Google Local Guide")}</span>
+
+</div>
+
+</div>
+</article>
+
+</div>
+</div>
+</section>
+
+<!-- WIDER NETWORK -->
+<section id="network" style="padding: 104px 0 0">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 44px">
+<div class="shead" style="gap: 20px 64px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 640px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("network","text-the-wider-network","The wider network")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("network","text-who-else-has-sat-at-the-table","Who else has sat at the table")}</h2>
+</div>
+<p style="margin: 0; max-width: 420px; font-size: 19px; line-height: 1.65; color: #4E5761">{text("network","text-former-members-stay-on-as-advisors-guest-speaker","Former members stay on as advisors. Guest speakers join our Master Council. Together they make the room much bigger than twelve.")}</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 20px">
+<div style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 28px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px">
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1F4E8C">{text("network","text-former-members","Former members")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px">{text("network","text-board-of-advisors","Board of Advisors")}</h3>
+</div>
+
+<div style="display: flex; align-items: center; gap: 16px; border-top: 1px solid #DADFE3; padding-top: 16px">
+<img src={asset("network","image-tony-atkins","/brand-assets/dgs-homepage/advisors/tony-atkins.jpg")} alt={assetAlt("network","image-tony-atkins","Tony Atkins")} style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.015em"><a href={link("network","link-www-linkedin-com-in-tony-atkins-aa234561","https://www.linkedin.com/in/tony-atkins-aa234561/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-tony-atkins","Tony Atkins")}</a></p>
+</div>
+
+<div style="display: flex; align-items: center; gap: 16px; border-top: 1px solid #DADFE3; padding-top: 16px">
+<img src={asset("network","image-steve-toth","/brand-assets/dgs-homepage/advisors/steve-toth.jpg")} alt={assetAlt("network","image-steve-toth","Steve Toth")} style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.015em"><a href={link("network","link-www-linkedin-com-in-stevetothjr","https://www.linkedin.com/in/stevetothjr/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-steve-toth","Steve Toth")}</a></p>
+</div>
+
+<div style="display: flex; align-items: center; gap: 16px; border-top: 1px solid #DADFE3; padding-top: 16px">
+<img src={asset("network","image-garret-acott","/brand-assets/dgs-homepage/advisors/garret-acott.jpg")} alt={assetAlt("network","image-garret-acott","Garret Acott")} style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 22px; letter-spacing: -0.015em"><a href={link("network","link-www-linkedin-com-in-garretacott","https://www.linkedin.com/in/garretacott/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-garret-acott","Garret Acott")}</a></p>
+</div>
+
+</div>
+<div style="flex: 3 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 28px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px">
+<span style="font-size: 13.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1F4E8C">{text("network","text-guest-speakers","Guest speakers")}</span>
+<h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 26px">{text("network","text-master-council","Master Council")}</h3>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 28px">
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-kyle-roof","/brand-assets/dgs-homepage/council/kyle-roof.jpg")} alt={assetAlt("network","image-kyle-roof","Kyle Roof")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-kyle-roof-seo","https://www.linkedin.com/in/kyle-roof-seo/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-kyle-roof","Kyle Roof")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-dixon-jones","/brand-assets/dgs-homepage/council/dixon-jones.jpg")} alt={assetAlt("network","image-dixon-jones","Dixon Jones")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-dixonjones","https://www.linkedin.com/in/dixonjones/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-dixon-jones","Dixon Jones")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-steven-kang","/brand-assets/dgs-homepage/council/steven-kang.jpg")} alt={assetAlt("network","image-steven-kang","Steven Kang")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-stevenkangstrategist","https://www.linkedin.com/in/stevenkangstrategist/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-steven-kang","Steven Kang")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-ted-kubaitis","/brand-assets/dgs-homepage/council/ted-kubaitis.jpg")} alt={assetAlt("network","image-ted-kubaitis","Ted Kubaitis")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-edwardkubaitis","https://www.linkedin.com/in/edwardkubaitis/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-ted-kubaitis","Ted Kubaitis")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-bradley-benner","/brand-assets/dgs-homepage/council/bradley-benner.jpg")} alt={assetAlt("network","image-bradley-benner","Bradley Benner")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-bradleybenner","https://www.linkedin.com/in/bradleybenner/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-bradley-benner","Bradley Benner")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-lee-witcher","/brand-assets/dgs-homepage/council/lee-witcher.jpg")} alt={assetAlt("network","image-lee-witcher","Lee Witcher")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-leewitcher","https://www.linkedin.com/in/leewitcher/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-lee-witcher","Lee Witcher")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-holly-starks","/brand-assets/dgs-homepage/council/holly-starks.jpg")} alt={assetAlt("network","image-holly-starks","Holly Starks")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-localu-org-about-faculty","https://localu.org/about/faculty/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-holly-starks","Holly Starks")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-eric-lancheres","/brand-assets/dgs-homepage/council/eric-lancheres.jpg")} alt={assetAlt("network","image-eric-lancheres","Eric Lancheres")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-eric-lancheres-787a772","https://www.linkedin.com/in/eric-lancheres-787a772/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-eric-lancheres","Eric Lancheres")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-viktoria-altman","/brand-assets/dgs-homepage/council/viktoria-altman.jpg")} alt={assetAlt("network","image-viktoria-altman","Viktoria Altman")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-bsplegalmarketing-com-about","https://bsplegalmarketing.com/about/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-viktoria-altman","Viktoria Altman")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-zach-delorenzo","/brand-assets/dgs-homepage/council/zach-delorenzo.jpg")} alt={assetAlt("network","image-zach-delorenzo","Zach DeLorenzo")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-hqdm-io-team-members-zach-delorenzo","https://www.hqdm.io/team-members/zach-delorenzo")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-zach-delorenzo","Zach DeLorenzo")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-michael-rayburn","/brand-assets/dgs-homepage/council/michael-rayburn.jpg")} alt={assetAlt("network","image-michael-rayburn","Michael Rayburn")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-michael-rayburn-22a6811b","https://www.linkedin.com/in/michael-rayburn-22a6811b/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-michael-rayburn","Michael Rayburn")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-rush-eby","/brand-assets/dgs-homepage/council/rush-eby.jpg")} alt={assetAlt("network","image-rush-eby","Rush Eby")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-rush-eby-57573488","https://www.linkedin.com/in/rush-eby-57573488/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-rush-eby","Rush Eby")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-bernard-ablola","/brand-assets/dgs-homepage/council/bernard-ablola.jpg")} alt={assetAlt("network","image-bernard-ablola","Bernard Ablola")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-bernardablola","https://www.linkedin.com/in/bernardablola/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-bernard-ablola","Bernard Ablola")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-marty-marion","/brand-assets/dgs-homepage/council/marty-marion.jpg")} alt={assetAlt("network","image-marty-marion","Marty Marion")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-marty-marion","https://www.linkedin.com/in/marty-marion/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-marty-marion","Marty Marion")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-matt-zimmerman","/brand-assets/dgs-homepage/council/matt-zimmerman.jpg")} alt={assetAlt("network","image-matt-zimmerman","Matt Zimmerman")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-mezimm1","https://www.linkedin.com/in/mezimm1/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-matt-zimmerman","Matt Zimmerman")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-nicholas-rizzo","/brand-assets/dgs-homepage/council/nicholas-rizzo.jpg")} alt={assetAlt("network","image-nicholas-rizzo","Nicholas Rizzo")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-nicholas-rizzo-7289bb54","https://www.linkedin.com/in/nicholas-rizzo-7289bb54/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-nicholas-rizzo","Nicholas Rizzo")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-adam-o-hern","/brand-assets/dgs-homepage/council/adam-ohern.jpg")} alt={assetAlt("network","image-adam-o-hern","Adam O’Hern")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px"><a href={link("network","link-www-linkedin-com-in-adam-ohern","https://www.linkedin.com/in/adam-ohern/")} target="_blank" rel="noopener" style="text-decoration: none; color: #0A2240; border-bottom: 1px solid #C3CAD1">{text("network","text-adam-o-hern","Adam O’Hern")}</a></p>
+
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #DADFE3; padding: 12px 0">
+
+<img src={asset("network","image-david-hood","/brand-assets/dgs-homepage/council/david-hood.jpg")} alt={assetAlt("network","image-david-hood","David Hood")} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: #F5F8FC">
+
+
+
+
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px">{text("network","text-david-hood","David Hood")}</p>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- RETREAT -->
+<section id="retreat" style="padding: 104px 0">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 36px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 700px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("retreat","text-once-a-year-in-person","Once a year, in person")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("retreat","text-the-annual-retreat","The annual retreat.")}</h2>
+<p style="margin: 0; font-size: 20px; line-height: 1.65; color: #4E5761">{text("retreat","text-for-four-to-five-days-the-dozen-gets-off-zoom-an","For four to five days, the Dozen gets off Zoom and into one house. We teach each other, work through each other's businesses, and build the trust that makes Friday honest. Iron sharpens iron.")}</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px">
+<img class="rimg" src={asset("retreat","image-dgs-members-fly-fishing-at-a-mountain-lake-durin","/brand-assets/dgs-homepage/photos/hero-fishing.jpg")} alt={assetAlt("retreat","image-dgs-members-fly-fishing-at-a-mountain-lake-durin","DGS members fly fishing at a mountain lake during the retreat")} style="grid-column: 1 / -1; display: block; width: 100%; height: 520px; object-fit: cover; object-position: center 62%; border-radius: 2px">
+<img class="rimg" src={asset("retreat","image-a-member-presenting-to-the-group-on-the-big-scre","/brand-assets/dgs-homepage/photos/retreat-presenting.jpg")} alt={assetAlt("retreat","image-a-member-presenting-to-the-group-on-the-big-scre","A member presenting to the group on the big screen")} style="display: block; width: 100%; height: 340px; object-fit: cover; object-position: 30% center; border-radius: 2px">
+<img class="rimg" src={asset("retreat","image-a-member-teaching-a-session-to-the-group","/brand-assets/dgs-homepage/photos/retreat-teaching.jpg")} alt={assetAlt("retreat","image-a-member-teaching-a-session-to-the-group","A member teaching a session to the group")} style="display: block; width: 100%; height: 340px; object-fit: cover; border-radius: 2px">
+<img class="rimg" src={asset("retreat","image-group-dinner-overlooking-a-lake-at-sunset","/brand-assets/dgs-homepage/photos/retreat-dinner.jpg")} alt={assetAlt("retreat","image-group-dinner-overlooking-a-lake-at-sunset","Group dinner overlooking a lake at sunset")} style="display: block; width: 100%; height: 100%; min-height: 0; object-fit: cover; border-radius: 2px">
+<img class="rimg full" src={asset("retreat","image-the-group-at-the-retreat-cabin","/brand-assets/dgs-homepage/photos/retreat-cabin.jpg")} alt={assetAlt("retreat","image-the-group-at-the-retreat-cabin","The group at the retreat cabin")} style="display: block; width: 100%; height: auto; aspect-ratio: 1020 / 590; object-fit: cover; object-position: center; border-radius: 2px">
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+
+<span style="border: 1px solid #C3CAD1; border-radius: 2px; padding: 10px 18px; font-size: 17px; color: #2D3748"><strong style="font-family: 'Public Sans', system-ui, sans-serif; color: #0A2240">{text("retreat","text-evergreen","Evergreen")}</strong>{text("retreat","text-colorado"," · Colorado")}</span>
+
+<span style="border: 1px solid #C3CAD1; border-radius: 2px; padding: 10px 18px; font-size: 17px; color: #2D3748"><strong style="font-family: 'Public Sans', system-ui, sans-serif; color: #0A2240">{text("retreat","text-austin","Austin")}</strong>{text("retreat","text-texas"," · Texas")}</span>
+
+<span style="border: 1px solid #C3CAD1; border-radius: 2px; padding: 10px 18px; font-size: 17px; color: #2D3748"><strong style="font-family: 'Public Sans', system-ui, sans-serif; color: #0A2240">{text("retreat","text-orlando","Orlando")}</strong>{text("retreat","text-florida"," · Florida")}</span>
+
+<span style="border: 1px solid #C3CAD1; border-radius: 2px; padding: 10px 18px; font-size: 17px; color: #2D3748"><strong style="font-family: 'Public Sans', system-ui, sans-serif; color: #0A2240">{text("retreat","text-smoky-mountains","Smoky Mountains")}</strong>{text("retreat","text-tennessee"," · Tennessee")}</span>
+
+</div>
+</div>
+</section>
+
+<!-- PATH TO A SEAT -->
+<section id="seat" style="padding: 104px 0; background: #F5F8FC; border-top: 1px solid #DADFE3; border-bottom: 1px solid #DADFE3">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 44px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 760px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("path","text-for-seo-experts","For SEO experts")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("path","text-your-best-ideas-deserve-a-better-room-than-a-con","Your best ideas deserve a better room than a conference stage.")}</h2>
+<p style="margin: 0; font-size: 19px; line-height: 1.65; color: #4E5761">{text("path","text-on-stage-the-audience-takes-notes-and-nobody-pus","On stage, the audience takes notes and nobody pushes back. Share the real version in public and you give your edge away. At our table, twelve operators running live client work will pressure-test it, and it stays in the room.")}</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+<div style="border-top: 2px solid #1F4E8C; padding-top: 20px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 700; font-size: 17px; color: #1F4E8C">{text("path","text-01","01")}</span><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-size: 22px; font-weight: 400">{text("path","text-apply-and-present","Apply and present")}</h3><p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("path","text-tell-us-what-you-re-working-on-if-it-s-a-fit-you","Tell us what you’re working on. If it’s a fit, you present to the Dozen on a Friday and the room digs in.")}</p></div>
+<div style="border-top: 2px solid #1F4E8C; padding-top: 20px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 700; font-size: 17px; color: #1F4E8C">{text("path","text-02","02")}</span><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-size: 22px; font-weight: 400">{text("path","text-join-the-master-council","Join the Master Council")}</h3><p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("path","text-great-guests-stay-connected-with-the-group-betwe","Great guests stay connected with the group between sessions, alongside names like Kyle Roof and Dixon Jones.")}</p></div>
+<div style="border-top: 2px solid #1F4E8C; padding-top: 20px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 700; font-size: 17px; color: #1F4E8C">{text("path","text-03","03")}</span><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-size: 22px; font-weight: 400">{text("path","text-earn-a-seat","Earn a seat")}</h3><p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4E5761">{text("path","text-when-a-seat-opens-the-current-members-vote-in-a-","When a seat opens, the current members vote in a past guest from the Council. You don’t apply to join. You earn the invite and take your seat at the table.")}</p></div>
+</div>
+</div>
+</section>
+
+<!-- APPLY -->
+<section id="apply" style="padding: 104px 0">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; gap: 48px">
+<form class="applyform" action="/api/apply" method="post" style="flex: 3 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 2px; padding: 36px; display: flex; flex-direction: column; gap: 18px">
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 34px; letter-spacing: -0.015em">{text("apply","text-have-something-worth-sharing","Have something worth sharing?")}</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #4E5761">{text("apply","text-apply-to-present-to-the-dozen-it-takes-about-two","Apply to present to the Dozen. It takes about two minutes, and every member started as a guest.")}</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px">
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761">{text("apply","text-your-name","Your name")}<input type="text" name="name" required="" autocomplete="name" style="font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid rgb(195, 202, 209); background: rgb(245, 248, 252); color: rgb(10, 34, 64);"></label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761">{text("apply","text-email","Email")}<input type="email" name="email" required="" autocomplete="email" style="font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid rgb(195, 202, 209); background: rgb(245, 248, 252); color: rgb(10, 34, 64);"></label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761">{text("apply","text-linkedin-or-website","LinkedIn or website")}<input type="url" name="link" required="" inputmode="url" placeholder={text("apply","text-placeholder","https://")} style="font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid rgb(195, 202, 209); background: rgb(245, 248, 252); color: rgb(10, 34, 64);"></label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761">{text("apply","text-who-in-the-group-knows-you","Who in the group knows you?")}<select name="referrer" required="" style="font: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid #C3CAD1; background: #F5F8FC; color: #0A2240; appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231F4E8C' stroke-width='1.8'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer"><option value="" selected="" disabled="">{text("apply","text-choose-one","Choose one")}</option><option>{text("apply","text-richard-fong","Richard Fong")}</option><option>{text("apply","text-chris-koszo","Chris Koszo")}</option><option>{text("apply","text-andrew-ansley","Andrew Ansley")}</option><option>{text("apply","text-brian-winum","Brian Winum")}</option><option>{text("apply","text-chris-castillo","Chris Castillo")}</option><option>{text("apply","text-chas-henry","Chas Henry")}</option><option>{text("apply","text-chris-labbate","Chris Labbate")}</option><option>{text("apply","text-cory-hubbell","Cory Hubbell")}</option><option>{text("apply","text-mike-merlino","Mike Merlino")}</option><option>{text("apply","text-brian-kato","Brian Kato")}</option><option>{text("apply","text-brian-hong","Brian Hong")}</option><option>{text("apply","text-simon-cornelius","Simon Cornelius")}</option><option>{text("apply","text-a-past-guest-or-advisor","A past guest or advisor")}</option><option>{text("apply","text-we-met-at-an-event","We met at an event")}</option><option>{text("apply","text-no-one-yet","No one yet")}</option></select></label>
+</div>
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761">{text("apply","text-what-would-you-present","What would you present?")}<textarea name="topic" rows="3" required="" placeholder={text("apply","text-placeholder-a-test-a-tool-or-a-workflow-that-s-w","A test, a tool or a workflow that’s working right now. A few sentences is plenty.")} style="font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid rgb(195, 202, 209); background: rgb(245, 248, 252); color: rgb(10, 34, 64); resize: vertical;"></textarea></label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: #4E5761"><span>{text("apply","text-a-problem-you-d-want-the-room-s-help-with","A problem you’d want the room’s help with ")}<span style="font-weight: 400; color: #5A6474">{text("apply","text-optional","(optional)")}</span></span><span style="font-size: 14.5px; color: #5A6474; line-height: 1.45">{text("apply","text-this-becomes-your-hot-seat-twelve-operators-one-","This becomes your hot seat. Twelve operators, one problem of yours.")}</span><textarea name="hotseat" rows="2" style="font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 18px; padding: 13px 14px; border-radius: 2px; border: 1px solid rgb(195, 202, 209); background: rgb(245, 248, 252); color: rgb(10, 34, 64); resize: vertical;"></textarea></label>
+<div aria-hidden="true" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden"><label>{text("apply","text-leave-this-empty","Leave this empty")}<input type="text" name="company_website" tabindex="-1" autocomplete="off" style=""></label></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 4px">
+<button type="submit" style="text-transform: uppercase; letter-spacing: 0.08em; font: inherit; font-weight: 600; font-size: 16px; background: #0A2240; color: #FFFFFF; border: 0; border-radius: 2px; padding: 16px 26px; cursor: pointer">{text("apply","text-send-my-application","Send my application")}</button>
+<span style="font-size: 15px; line-height: 1.5; color: #5A6474; flex: 1 1 240px">{text("apply","text-a-member-reads-every-application-you-ll-hear-bac","A member reads every application. You’ll hear back within a few days.")}</span>
+</div>
+</form>
+<div style="flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("apply","text-what-you-walk-away-with","What you walk away with")}</p>
+
+<div style="border-bottom: 1px solid #DADFE3; padding-bottom: 16px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: 19px">{text("apply","text-your-idea-put-to-work","Your idea, put to work")}</span>
+<span style="font-size: 17px; line-height: 1.55; color: #4E5761">{text("apply","text-twelve-agencies-with-live-client-accounts-ideas-","Twelve agencies with live client accounts. Ideas that hold up get used, and you hear how they performed.")}</span>
+</div>
+
+<div style="border-bottom: 1px solid #DADFE3; padding-bottom: 16px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: 19px">{text("apply","text-your-own-hot-seat","Your own hot seat")}</span>
+<span style="font-size: 17px; line-height: 1.55; color: #4E5761">{text("apply","text-bring-a-problem-you-re-stuck-on-twelve-operators","Bring a problem you’re stuck on. Twelve operators will give you their best advice and share what’s worked for them.")}</span>
+</div>
+
+<div style="border-bottom: 1px solid #DADFE3; padding-bottom: 16px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: 19px">{text("apply","text-relationships-that-last","Relationships that last")}</span>
+<span style="font-size: 17px; line-height: 1.55; color: #4E5761">{text("apply","text-connections-and-referrals-with-established-agenc","Connections and referrals with established agency owners across the US and Canada.")}</span>
+</div>
+
+<div style="border-bottom: 1px solid #DADFE3; padding-bottom: 16px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: 19px">{text("apply","text-a-seat-on-the-master-council","A seat on the Master Council")}</span>
+<span style="font-size: 17px; line-height: 1.55; color: #4E5761">{text("apply","text-stay-connected-with-the-group-and-be-in-the-runn","Stay connected with the group, and be in the running when a seat opens.")}</span>
+</div>
+
+<div style="margin-top: 8px; background: #0A2240; color: #FFFFFF; border-radius: 2px; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #C9D6E8">{text("apply","text-off-the-record","Off the record")}</span>
+<span style="font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 20px; line-height: 1.35">{text("apply","text-everything-said-at-the-table-is-confidential","Everything said at the table is confidential.")}</span>
+<span style="font-size: 16px; line-height: 1.6; color: #C9D2E0">{text("apply","text-sessions-are-recorded-for-members-only-nothing-i","Sessions are recorded for members only. Nothing is published, posted or passed on outside the group. What you share is used to help, never repeated.")}</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="padding: 0 0 104px">
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #1F4E8C">{text("faq","text-questions","Questions")}</p>
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.015em">{text("faq","text-good-to-know","Good to know.")}</h2>
+</div>
+<div style="border-bottom: 1px solid #DADFE3">
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-when-and-where-do-you-meet","When and where do you meet?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-every-friday-at-8-30-a-m-pacific-11-30-a-m-easte","Every Friday at 8:30 a.m. Pacific (11:30 a.m. Eastern), on Zoom.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-what-does-a-guest-session-look-like","What does a guest session look like?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-we-start-with-a-quick-round-of-introductions-abo","We start with a quick round of introductions, about 10 to 15 minutes. Then the floor is yours for 30 minutes or so. The last 20 to 30 minutes are open discussion and your hot seat.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-do-i-need-a-polished-presentation","Do I need a polished presentation?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-no-this-isn-t-a-conference-stage-and-it-s-pretty","No. This isn’t a conference stage, and it’s pretty informal. Bring the knowledge you’d share in a room of trusted peers but wouldn’t put in front of a hundred people: a test, a workflow, a tool. Slides are optional.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-can-i-share-something-i-m-building","Can I share something I’m building?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-yes-guests-often-beta-launch-or-beta-test-their-","Yes. Guests often beta-launch or beta-test their products with us. It’s a highly technical room, so expect sharp questions and ideas you can use.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-does-it-cost-anything-to-present","Does it cost anything to present?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-no-presenting-is-free","No. Presenting is free.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-what-happens-after-i-apply","What happens after I apply?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-we-read-every-application-and-you-ll-hear-back-f","We read every application and you’ll hear back from us within a few days.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-will-my-session-be-shared","Will my session be shared?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-no-sessions-are-recorded-for-members-only-everyt","No. Sessions are recorded for members only. Everything said at the table is confidential and is never published, posted or passed on.")}</p>
+</details>
+<details class="faq" style="border-top: 1px solid #DADFE3; padding: 22px 0">
+<summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-family: 'Newsreader', Georgia, serif; font-optical-sizing: auto; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; color: #0A2240">{text("faq","text-how-do-i-join-the-dozen","How do I join the Dozen?")}</summary>
+<p style="margin: 12px 0 0; max-width: 760px; font-size: 18px; line-height: 1.65; color: #4E5761">{text("faq","text-you-don-t-apply-to-join-guests-present-first-and","You don’t apply to join. Guests present first and join our Master Council. When a seat opens, the current members vote in a new member from the Council.")}</p>
+</details>
+</div>
+</div>
+</section>
 </main>

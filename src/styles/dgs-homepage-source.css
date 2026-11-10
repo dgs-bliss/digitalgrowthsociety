@@ -1,0 +1,39 @@
+/* ASTRO-DEMO-LOCK authority: exact supplied homepage body responsive CSS, scoped from global chrome. */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Public+Sans:wght@300;400;500;600;700&family=Sora:wght@700;800&display=swap');
+.dgs-source-home,.dgs-source-home *,.dgs-source-home *::before,.dgs-source-home *::after{box-sizing:content-box}
+.dgs-source-home{font-family:'Public Sans',system-ui,sans-serif;font-size:16px;line-height:normal;color:#0A2240;background:#FFFFFF;width:100%;-webkit-font-smoothing:antialiased}
+.dgs-source-home :is(h1,h2,h3,h4,h5,h6){color:inherit}
+.dgs-source-home .hero-cta,.dgs-source-home .hero-cta:hover{font-family:'Public Sans',system-ui,sans-serif;font-size:16px;font-weight:400;line-height:normal;letter-spacing:normal;text-transform:none;padding:0;background:transparent;color:inherit;border-radius:0}
+.dgs-source-home html{scroll-padding-top:84px;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){.dgs-source-home html{scroll-behavior:auto}}
+.dgs-source-home body{margin:0;background:#FFFFFF}
+.dgs-source-home a{color:#1F4E8C}.dgs-source-home a:hover{color:#0A2240}
+
+.dgs-source-home .faq summary::-webkit-details-marker{display:none}
+.dgs-source-home .faq summary::after{content:"+";font-family:'Public Sans',system-ui,sans-serif;font-size:28px;font-weight:300;color:#1F4E8C;line-height:1;transition:transform .2s}
+.dgs-source-home .faq[open] summary::after{transform:rotate(45deg)}
+.dgs-source-home .mcard:hover{border-color:#C3CAD1}
+.dgs-source-home img{max-width:100%}
+.dgs-source-home .shead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);align-items:end}
+.dgs-source-home .shead>p{margin-bottom:5px!important}
+@media (max-width:1024px), (hover:none) and (pointer:coarse) and (max-width:1366px){.dgs-source-home .shead{grid-template-columns:minmax(0,1fr)}.dgs-source-home .shead>p{max-width:640px!important;margin-bottom:0!important}}
+@media (max-width:1024px), (hover:none) and (pointer:coarse) and (max-width:1366px){
+ .dgs-source-home section{padding-top:72px!important;padding-bottom:72px!important}
+ .dgs-source-home #top{padding-top:56px!important}
+ .dgs-source-home .hero-cta a{flex:1 1 100%;text-align:center}
+ .dgs-source-home .mgrid{gap:16px!important}
+ .dgs-source-home .mcard{display:grid!important;grid-template-columns:104px 1fr;column-gap:16px;padding:16px;align-items:start}
+ .dgs-source-home .mphoto img{width:104px!important;aspect-ratio:10/11!important}
+ .dgs-source-home .mphoto span{display:none}
+ .dgs-source-home .mbody{display:contents!important}
+ .dgs-source-home .mhead{grid-column:2;grid-row:1;align-self:stretch;min-height:114px;gap:0!important;padding:2px 0 1px}
+ .dgs-source-home .mhead>p{font-size:16.5px!important;line-height:1.25;letter-spacing:0.005em}
+ .dgs-source-home .mhead>h3{font-size:23px!important;line-height:1.15;margin-top:5px!important}
+ .dgs-source-home .mhead>.dgs-source-home a{margin-top:auto;padding-top:10px;font-size:14px!important;line-height:1.4}
+ .dgs-source-home .mbio{grid-column:1 / -1;margin-top:14px!important;font-size:16px!important}
+ .dgs-source-home .mbadges{grid-column:1 / -1;margin-top:12px!important}
+ .dgs-source-home .rimg{height:auto!important;aspect-ratio:4/3}
+ .dgs-source-home .rimg.full{aspect-ratio:1020/590!important}
+ .dgs-source-home .stats{grid-template-columns:1fr 1fr!important;gap:24px 20px!important}
+ .dgs-source-home .zoomshot{width:calc(100% + 32px)!important;max-width:none!important;margin:0 -16px;border-radius:0!important;border-left:0!important;border-right:0!important}
+}

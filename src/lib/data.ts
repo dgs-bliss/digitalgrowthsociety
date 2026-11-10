@@ -219,6 +219,10 @@ function tinaApiToken() {
 
 
 function tinaProxyEndpoints() {
+	// During `tinacms dev`, resolve editor/public queries against the local GraphQL
+	// server before attempting Cloud. This keeps schema-in-progress previews and
+	// ASTRO-DEMO-LOCK verification deterministic without weakening production.
+	const localDev = import.meta.env.DEV ? 'http://localhost:4001/graphql' : null;
 	// Do not SSR-fetch this same Passenger app's public /tina-content-proxy.
 	// Self-fetching the live domain during page render can deadlock/timeout under cPanel Passenger.
 	// Public pages must still prefer saved Tina backend data over deployed local fallbacks, so
@@ -231,7 +235,7 @@ function tinaProxyEndpoints() {
 	].filter((endpoint): endpoint is string =>
 		Boolean(endpoint && clientId && endpoint.includes(String(clientId))),
 	);
-	const endpoints = [direct, ...inherited].filter(Boolean) as string[];
+	const endpoints = [localDev, direct, ...inherited].filter(Boolean) as string[];
 	return Array.from(new Set(endpoints));
 }
 
@@ -428,7 +432,7 @@ async function getLivePage(slug: string) {
 			blocks {
 				__typename
 				... on PageBlocksContent { body }
-				... on PageBlocksHomepageTemplate { hero { eyebrow title description buttonText buttonLink image imageAlt } why { eyebrow title paragraphOne paragraphTwo standards { label title text } } newsroom { heading subheading submitHeading submitButtonText submitButtonLink prompts { title text } } wireFeature { eyebrow quote author byline image imageAlt } coverage { title description topics { number title text } } contact { eyebrow title description note cards { title email text accent } } }
+				... on PageBlocksHomepageTemplate { sourceContent { hero { texts { key value } images { key image alt } links { key url } } stats { texts { key value } images { key image alt } links { key url } } friday { texts { key value } images { key image alt } links { key url } } mission { texts { key value } images { key image alt } links { key url } } topics { texts { key value } images { key image alt } links { key url } } members { texts { key value } images { key image alt } links { key url } } network { texts { key value } images { key image alt } links { key url } } retreat { texts { key value } images { key image alt } links { key url } } path { texts { key value } images { key image alt } links { key url } } apply { texts { key value } images { key image alt } links { key url } } faq { texts { key value } images { key image alt } links { key url } } } }
 				... on PageBlocksAboutMockup17 { hero { eyebrow headline lede } purpose { eyebrow title paragraphOne pullquote paragraphTwo } coverage { eyebrow title intro items { number title text link } } standardsSection { eyebrow title intro items { number title text } } independence { eyebrow title image imageAlt paragraphOne paragraphTwo buttonText buttonLink } newsroom { eyebrow title intro contacts { icon title email text } } }
 				... on PageBlocksOurTeamMockup17 { hero { eyebrow headline lede } leadership { eyebrow title people { name role location image imageAlt bio } } seniorStaff { eyebrow title } }
 				... on PageBlocksContactMockup17 { hero { eyebrow headline lede } formSection { eyebrow title description buttonText note formAction subject } inboxes { eyebrow title cards { title description email note } } requests { eyebrow title intro cards { icon title text } } }
