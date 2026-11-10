@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify Starter Site sitemap dynamic data + SEO output.
+"""Verify Digital Growth Society sitemap dynamic data + SEO output.
 
 Guard for the /sitemap/ route: compares Tina backend page/post collections to
 live public sitemap DOM and checks SEO/meta output. This prevents the sitemap
@@ -18,14 +18,17 @@ import requests
 
 
 def load_env_file() -> None:
-    for candidate in [Path(".env"), Path.home() / ".hermes" / ".env"]:
+    for candidate in [Path(".env")]:
         if not candidate.exists():
             continue
         for line in candidate.read_text(errors="ignore").splitlines():
             if "=" not in line or line.strip().startswith("#"):
                 continue
             key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+            key = key.strip()
+            if key == "SITE_URL" and os.environ.get(key):
+                continue
+            os.environ[key] = value.strip().strip('"').strip("'")
 
 
 load_env_file()
@@ -110,8 +113,9 @@ def page_url(node: dict) -> str:
 
 
 def post_url(node: dict) -> str:
-    permalink = node.get("permalink") or node.get("_sys", {}).get("filename") or ""
-    return with_slash(permalink)
+    value = node.get("permalink") or node.get("_sys", {}).get("filename") or ""
+    slug = re.sub(r"[^a-z0-9]+", "-", str(value).lower()).strip("-")
+    return with_slash(slug)
 
 
 def tina_query() -> dict:
@@ -135,15 +139,15 @@ def main() -> int:
     for node in backend_pages:
         filename = node.get("_sys", {}).get("filename") or ""
         url = page_url(node)
-        if filename in {"404", "sitemap"} or url == "/sitemap/" or node.get("seo", {}).get("noindex"):
+        if filename in {"404", "sitemap"} or url == "/sitemap/" or (node.get("seo") or {}).get("noindex"):
             continue
-        expected_pages.append((url, normalize(node.get("title") or node.get("seo", {}).get("metaTitle") or filename)))
+        expected_pages.append((url, normalize(node.get("title") or (node.get("seo") or {}).get("metaTitle") or filename)))
 
     expected_posts = []
     for node in backend_posts:
-        if node.get("seo", {}).get("noindex"):
+        if (node.get("seo") or {}).get("noindex"):
             continue
-        expected_posts.append((post_url(node), normalize(node.get("title") or node.get("seo", {}).get("metaTitle") or node.get("_sys", {}).get("filename"))))
+        expected_posts.append((post_url(node), normalize(node.get("title") or (node.get("seo") or {}).get("metaTitle") or node.get("_sys", {}).get("filename"))))
 
     html = requests.get(f"{SITE}/sitemap/?v=sitemap-dynamic-verify", headers={"Cache-Control": "no-cache", "User-Agent": "HermesSitemapVerify"}, timeout=30).text
     parser = LinkCollector()
@@ -160,12 +164,12 @@ def main() -> int:
         if (url, text) not in live_links:
             failures.append(f"missing post link {url} {text!r}")
 
-    if "Sitemap | Starter Site" not in normalize(parser.title_text):
+    if "Sitemap | Digital Growth Society" not in normalize(parser.title_text):
         failures.append(f"bad <title>: {parser.title_text!r}")
-    if "Browse the public pages and latest reporting published by Starter Site." not in parser.meta.get("description", ""):
+    if "Browse the public pages and latest reporting published by Digital Growth Society." not in parser.meta.get("description", ""):
         failures.append("missing sitemap meta description")
     if "ffn-demo-sitemap" not in html or "sitemap-panel" not in html or "Big Shoulders Display" not in html:
-        failures.append("missing Starter Site sitemap branding markers")
+        failures.append("missing Digital Growth Society sitemap branding markers")
     if f">{len(expected_pages)}<" not in html or f">{len(expected_posts)}<" not in html:
         failures.append("dynamic page/post counts not rendered")
     if "Tina content collections" not in live_text:

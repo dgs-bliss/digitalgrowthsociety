@@ -17,6 +17,22 @@ from urllib.parse import urljoin
 
 import requests
 
+
+def load_env_file() -> None:
+    path = Path(".env")
+    if not path.exists():
+        return
+    for line in path.read_text(errors="ignore").splitlines():
+        if "=" not in line or line.strip().startswith("#"):
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key == "SITE_URL" and os.environ.get(key):
+            continue
+        os.environ[key] = value.strip().strip('"').strip("'")
+
+
+load_env_file()
 SITE = os.environ.get("SITE_URL", "").rstrip("/")
 if not SITE or "localhost" in SITE.lower() or "127.0.0.1" in SITE:
     raise SystemExit("TINA-FULLCHECK BLOCKED: SITE_URL must be the public HTTPS origin")
@@ -151,15 +167,15 @@ def main() -> int:
         "user": fetch_route("/author/admin/"),
     }
     config, page, blog, category, user = data["config"], data["page"], data["blog"], data["category"], data["user"]
-    site_title = config.get("seo", {}).get("title") or "Starter Site"
+    site_title = config.get("seo", {}).get("title") or "Digital Growth Society"
     business_post_count = sum(
         1 for edge in (data.get("blogs", {}).get("edges") or [])
         if any(str(value).replace("\\", "/").lower().endswith("/business.json") for value in ((edge.get("node") or {}).get("categories") or []))
     )
     category_description = category.get("description") or (
-        f"Read the latest {category.get('title')} articles from Starter Site."
+        f"Read the latest {category.get('title')} articles from Digital Growth Society."
         if business_post_count else
-        f"Articles in the {category.get('title')} category will be published soon on Starter Site."
+        f"Articles in the {category.get('title')} category will be published soon on Digital Growth Society."
     )
     seo_results = {
         "page": assert_seo("page", routes["page"], page.get("seo"), page.get("title") or site_title, config.get("seo", {}).get("description") or "", f"{SITE}/", failures),

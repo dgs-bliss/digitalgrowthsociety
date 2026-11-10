@@ -1,5 +1,5 @@
 {
-  "name": "boilerplate",
+  "name": "digitalgrowthsociety",
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -22,6 +22,8 @@
     "permalink:sync": "node scripts/sync-permalinks-to-filenames.mjs",
     "permalink:watch": "node scripts/watch-permalinks-to-filenames.mjs",
     "tina:fullcheck": "python3 scripts/tina-fullcheck.py",
+    "astro:demo-lock": "node scripts/validate-demo-lock.mjs",
+    "astro:demo-lock:negative": "node scripts/test-demo-lock-negative.mjs",
     "astro:demo-lock:preflight": "node scripts/validate-demo-lock-preflight.mjs",
     "astro:demo-lock:preflight:negative": "node scripts/test-demo-lock-preflight-negative.mjs"
   },
