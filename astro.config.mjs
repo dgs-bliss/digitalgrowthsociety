@@ -94,7 +94,7 @@ export default defineConfig({
 		// triggers a full Vite resolve + Astro-plugin compile of the
 		// package's source `.astro` files on the first request.
 		ssr: {
-			noExternal: ['@tinacms/astro', '@tinacms/bridge'],
+			noExternal: ['@tinacms/astro', '@tinacms/bridge', 'tinacms'],
 		},
 		build: {
 			rollupOptions: {
