@@ -5,9 +5,9 @@
     "title": "Digital Growth Society",
     "description": "Practical reporting, ideas, and perspectives for navigating digital growth.",
     "siteOwner": "Ruth Goodwin",
-    "logo": "/brand-assets/dgs-homepage/dgs-logo.png",
-    "favicon": "/favicon.svg",
-    "footerLogo": "/brand-assets/dgs-homepage/dgs-logo.png",
+    "logo": "https://res.cloudinary.com/ljjidst6/image/upload/v1794323401/digitalgrowthsociety/DGS-Logo.png",
+    "favicon": "https://res.cloudinary.com/ljjidst6/image/upload/v1794323401/digitalgrowthsociety/DGS-Logo.png",
+    "footerLogo": "https://res.cloudinary.com/ljjidst6/image/upload/v1794323401/digitalgrowthsociety/DGS-Logo.png",
     "footerTagline": "Greater together · Since 2019",
     "footerCopyrightSuffix": "A nonprofit mastermind"
   },
