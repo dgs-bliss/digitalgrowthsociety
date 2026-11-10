@@ -1,0 +1,314 @@
+---
+import { statSync } from 'node:fs';
+import { join } from 'node:path';
+import { getBlogPermalink } from '../../lib/permalinks';
+import TinaMarkdown from '@tinacms/astro/TinaMarkdown.astro';
+import { tinaField } from '@tinacms/astro/tina-field';
+import type { CmsBlog } from '../../lib/data';
+import FormattedDate from '../FormattedDate.astro';
+import { mdxComponents } from '../mdx/components';
+
+interface Props {
+	data?: CmsBlog | null;
+	relatedPosts?: CmsBlog[];
+}
+
+const { data, relatedPosts = [] } = Astro.props;
+
+type ReferenceObject = {
+	title?: string | null;
+	name?: string | null;
+	_sys?: { filename?: string | null } | null;
+};
+
+type AuthorObject = ReferenceObject & {
+	role?: string | null;
+	avatar?: string | null;
+	bio?: string | null;
+	email?: string | null;
+};
+
+type RichNode = {
+	type?: string;
+	text?: string;
+	children?: RichNode[];
+	[key: string]: unknown;
+};
+
+function getReferenceItems(reference: unknown): unknown[] {
+	return Array.isArray(reference) ? reference.filter(Boolean) : reference ? [reference] : [];
+}
+
+function getSingleReferenceLabel(reference: unknown) {
+	if (!reference) return null;
+	if (typeof reference === 'string') {
+		return reference.split('/').pop()?.replace(/\.(json|mdx?)$/, '').replace(/-/g, ' ') ?? null;
+	}
+	if (typeof reference === 'object') {
+		const item = reference as ReferenceObject;
+		return String(item.title ?? item.name ?? '') || null;
+	}
+	return null;
+}
+
+function getReferenceLabel(reference: unknown) {
+	const labels = getReferenceItems(reference).map(getSingleReferenceLabel).filter(Boolean) as string[];
+	return labels.length ? labels.join(', ') : null;
+}
+
+function getReferenceSlug(reference: unknown) {
+	const first = getReferenceItems(reference)[0];
+	if (!first) return null;
+	if (typeof first === 'string') {
+		return first.split('/').pop()?.replace(/\.(json|mdx?)$/, '') || null;
+	}
+	if (typeof first === 'object') {
+		const item = first as ReferenceObject;
+		return item._sys?.filename || (item.title || item.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || null;
+	}
+	return null;
+}
+
+function getPostCategories(post?: Partial<CmsBlog> | null) {
+	const categories = (post as any)?.categories;
+	if (Array.isArray(categories) && categories.length) {
+		return categories.map((item) => typeof item === 'string' ? item : item?.category).filter(Boolean);
+	}
+	return (post as any)?.category;
+}
+
+function getAuthor(reference: unknown) {
+	if (!reference || typeof reference !== 'object') return null;
+	return reference as AuthorObject;
+}
+
+function getPostUrl(post: CmsBlog) {
+	return getBlogPermalink(post);
+}
+
+function getPostTitle(post: CmsBlog) {
+	return post.title || 'Untitled story';
+}
+
+function getPostDescription(post: CmsBlog) {
+	return post.description || 'Read the full report.';
+}
+
+function getText(node: unknown): string {
+	if (!node || typeof node !== 'object') return '';
+	const item = node as RichNode;
+	if (typeof item.text === 'string') return item.text;
+	return Array.isArray(item.children) ? item.children.map(getText).join('') : '';
+}
+
+function slugify(value: string) {
+	return value
+		.toLowerCase()
+		.replace(/&/g, ' and ')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '') || 'section';
+}
+
+function getTocItems(body: unknown) {
+	if (!body || typeof body !== 'object') return [];
+	const root = body as RichNode;
+	const counts = new Map<string, number>();
+	return (root.children || [])
+		.filter((node) => node?.type === 'h2')
+		.map((node) => {
+			const title = getText(node).trim();
+			if (!title) return null;
+			const base = slugify(title);
+			const count = counts.get(base) || 0;
+			counts.set(base, count + 1);
+			return { title, id: count ? `${base}-${count + 1}` : base };
+		})
+		.filter(Boolean) as Array<{ title: string; id: string }>;
+}
+
+function getFallbackPublishedDate(post?: CmsBlog | null) {
+	if (!post?._sys?.filename) return new Date();
+	try {
+		const stat = statSync(join(process.cwd(), 'src', 'content', 'blog', `${post._sys.filename}.mdx`));
+		return stat.mtime;
+	} catch (_error) {
+		return new Date();
+	}
+}
+
+const postAuthor = data ? getAuthor(data.author) : null;
+const author = postAuthor;
+const authorName = getReferenceLabel(postAuthor) || getReferenceLabel(data?.author) || 'Site Staff';
+const authorSlug = getReferenceSlug(data?.author) || getReferenceSlug(author);
+const authorArchiveUrl = authorSlug ? `/blog/author/${authorSlug}/` : '/blog/';
+const authorInitials = authorName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SS';
+const categoryLabel = getReferenceLabel(getPostCategories(data)) || 'Article';
+const publishedDate = data?.pubDate ? new Date(data.pubDate) : getFallbackPublishedDate(data);
+const shareUrl = data ? getPostUrl(data) : '/blog/';
+
+const tocItems = getTocItems(data?.body);
+const hasToc = tocItems.length > 0;
+
+const heroImageAlt = (() => {
+  const sources = [];
+  if (typeof data !== 'undefined' && data) sources.push(data);
+  for (const item of sources) {
+    const value = item?.heroImageAlt || item?.featuredImageAlt || item?.imageAlt || item?.coverImageAlt || item?.thumbnailAlt;
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  for (const item of sources) {
+    const value = item?.title;
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return 'Article lead image';
+})();
+---
+
+{data && (
+	<>
+		<header class="ah">
+			<div class="w">
+				<div class="ah-in">
+					{categoryLabel && (
+						<div data-tina-field={tinaField(data, 'categories')} class="ah-k">
+							<b>{categoryLabel}</b>
+						</div>
+					)}
+					{data.title && <h1 data-tina-field={tinaField(data, 'title')}>{data.title}</h1>}
+					<div class="ah-by">
+						<a href={authorArchiveUrl} aria-label={`View ${authorName} archive`}>
+							{author?.avatar ? (
+								<img src={author.avatar} alt={authorName} width={52} height={52} class="ah-av" />
+							) : (
+								<span class="ah-av post-author-box__placeholder" aria-hidden="true">{authorInitials}</span>
+							)}
+						</a>
+						<div class="ah-au" data-tina-field={tinaField(data, 'author')}>
+							<div class="ah-an">By <a href={authorArchiveUrl}>{authorName}</a></div>
+						</div>
+						<div class="ah-dt">
+							{publishedDate && <span data-tina-field={tinaField(data, 'pubDate')}><FormattedDate date={publishedDate} /></span>}
+							{data.updatedDate && <><br /><span data-tina-field={tinaField(data, 'updatedDate')}>Updated <FormattedDate date={new Date(data.updatedDate)} /></span></>}
+						</div>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<section class="bd">
+			<div class="w bd-in">
+				{data.heroImage && (
+					<figure data-tina-field={tinaField(data, 'heroImage')} class="li">
+						<img width={1020} height={574} src={data.heroImage} alt={heroImageAlt} />
+					</figure>
+				)}
+
+				<aside class="rl" aria-label="Article tools">
+					{hasToc && (
+						<div class="rc toc">
+							<div class="rc-t">Table of Content</div>
+							<div class="rc-b">
+								{tocItems.map((item, index) => (
+									<a class="tc" href={`#${item.id}`}>
+										<span class="tc-n">{String(index + 1).padStart(2, '0')}</span>
+										<span class="tc-h">{item.title}</span>
+									</a>
+								))}
+							</div>
+						</div>
+					)}
+					<div class="rc">
+						<div class="rc-t">Share this story</div>
+						<div class="sh">
+							<a href={shareUrl} data-copy-link aria-label="Copy this post URL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4.93"></path><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 19.07"></path></svg><span>Copy Link</span></a>
+							<a href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg><span>Home</span></a>
+							<a href="/sitemap/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v10H8l-3 3z"></path></svg><span>Browse the Site</span></a>
+						</div>
+					</div>
+					<div class="rc">
+						<div class="rc-t">Write for us</div>
+						<div class="rc-b">
+							<a href="/write-for-us" class="rr">
+								<div class="rr-h">Share a news tip, expert insight, or original story idea with the Digital Growth Society editorial team &rarr;</div>
+							</a>
+						</div>
+					</div>
+				</aside>
+
+				<article id="article-body" class="pr" data-toc-ids={JSON.stringify(tocItems.map((item) => item.id))}>
+					{data.body && (
+						<div data-tina-field={tinaField(data, 'body')}>
+							{typeof data.body === 'string' ? <p>{data.body}</p> : <TinaMarkdown content={data.body} components={mdxComponents} />}
+						</div>
+					)}
+
+					<section id="about-author" data-tina-field={tinaField(data, 'author')} class="corr" aria-labelledby="post-author-heading">
+						<div class="corr-t">Published by</div>
+						<div class="corr-b">
+							<strong id="post-author-heading"><a href={authorArchiveUrl}>{authorName}</a></strong>
+							{author?.bio ? ` — ${author.bio}` : ' — Digital Growth Society newsroom contributor.'}
+						</div>
+					</section>
+				</article>
+			</div>
+		</section>
+		<script is:inline>
+			(() => {
+				const article = document.currentScript?.previousElementSibling?.querySelector?.('.pr') || document.querySelector('.pr[data-toc-ids]');
+				if (article) {
+					let ids = [];
+					try { ids = JSON.parse(article.getAttribute('data-toc-ids') || '[]'); } catch (_) {}
+					article.querySelectorAll('h2').forEach((heading, index) => {
+						if (ids[index] && !heading.id) heading.id = ids[index];
+					});
+				}
+
+				const copyLink = document.querySelector('[data-copy-link]');
+				if (copyLink) {
+					copyLink.addEventListener('click', async (event) => {
+						event.preventDefault();
+						const url = document.querySelector('link[rel="canonical"]')?.href || new URL(window.location.pathname, window.location.origin).toString();
+						try {
+							await navigator.clipboard.writeText(url);
+						} catch (_) {
+							const input = document.createElement('input');
+							input.value = url;
+							input.setAttribute('readonly', '');
+							document.body.appendChild(input);
+							input.select();
+							document.execCommand('copy');
+							input.remove();
+						}
+						const label = copyLink.querySelector('span');
+						if (label) {
+							const previous = label.textContent;
+							label.textContent = 'Copied';
+							window.setTimeout(() => { label.textContent = previous || 'Copy Link'; }, 1600);
+						}
+					});
+				}
+			})();
+		</script>
+	</>
+)}
+
+{data && relatedPosts.length > 0 && (
+	<section id="more-stories" class="mo" aria-labelledby="related-articles-heading">
+		<div class="w">
+			<div class="eye"><i></i><span>Keep reading</span></div>
+			<div class="h2" id="related-articles-heading">More in {categoryLabel}</div>
+			<div class="mo-g">
+				{relatedPosts.slice(0, 3).map((post) => (
+					<a href={getPostUrl(post)} class="mi">
+						{post.heroImage && <img src={post.heroImage} alt="" class="mi-img" width={420} height={262} />}
+						<div class="mi-c">
+							<div class="mi-k">{getReferenceLabel(getPostCategories(post)) || 'Article'}</div>
+							<div class="mi-h">{getPostTitle(post)}</div>
+							<p class="mi-x">{getPostDescription(post)}</p>
+						</div>
+					</a>
+				))}
+			</div>
+		</div>
+	</section>
+)}

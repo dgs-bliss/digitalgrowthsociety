@@ -1,0 +1,26 @@
+{
+  "headerNavigation": "src/content/navigation/header.json",
+  "footerNavigation": "src/content/navigation/footer.json",
+  "seo": {
+    "title": "Digital Growth Society",
+    "description": "Practical reporting, ideas, and perspectives for navigating digital growth.",
+    "siteOwner": "Ruth Goodwin",
+    "logo": "",
+    "favicon": "/favicon.svg",
+    "footerLogo": ""
+  },
+  "contactForm": {
+    "formspreeEndpoint": "https://formspree.io/f/xkjjdbok",
+    "heading": "Contact us",
+    "description": "Configure a unique Formspree endpoint for this site before enabling submissions.",
+    "buttonText": "Send Message",
+    "note": "This form remains disabled until its Formspree endpoint is configured.",
+    "subject": "Digital Growth Society contact form submission"
+  },
+  "codeInjection": {
+    "headerCode": "",
+    "footerCode": ""
+  },
+  "contactLinks": [],
+  "footerStarfield": false
+}

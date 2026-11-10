@@ -1,0 +1,17 @@
+---
+import Base from '../../layouts/Base.astro';
+import DemoCategoryArchive from '../../components/demo/DemoCategoryArchive.astro';
+import { getConfig, listBlogs } from '../../lib/data';
+
+export const prerender = false;
+
+const posts = await listBlogs();
+const config = (await getConfig()).data?.config ?? null;
+const siteName = config?.seo?.title ?? 'Digital Growth Society';
+const title = `Blog | ${siteName}`;
+const description = config?.seo?.description ?? 'Latest blog posts.';
+---
+
+<Base title={title} description={description} canonicalUrl="/blog/">
+	<DemoCategoryArchive archiveTitle="Blog" posts={posts} currentPage={1} totalPages={1} basePath="/blog" showCategoryBadge={false} />
+</Base>

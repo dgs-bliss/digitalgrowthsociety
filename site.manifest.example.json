@@ -1,0 +1,18 @@
+{
+  "mode": "independent",
+  "siteName": "Example Publication",
+  "siteOwner": "Example Publication",
+  "siteDescription": "Independent reporting and analysis.",
+  "siteUrl": "https://www.example.com",
+  "deployAdapter": "node",
+  "tinaClientId": "replace-with-new-tina-client-id",
+  "tinaToken": "replace-with-new-tina-read-token",
+  "tinaBranch": "main",
+  "githubContentRepo": "owner/new-repository",
+  "cloudinaryCloudName": "replace-with-cloud-name",
+  "cloudinaryApiKey": "replace-with-api-key",
+  "cloudinaryApiSecret": "replace-with-api-secret",
+  "cloudinaryRootFolder": "unique-site-slug",
+  "tinaContentApiUrl": "https://www.example.com/tina-content-proxy",
+  "formspreeEndpoint": ""
+}

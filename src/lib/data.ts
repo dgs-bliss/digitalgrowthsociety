@@ -1,0 +1,740 @@
+/**
+ * Per-collection data loaders + the data shapes they return.
+ *
+ * Loaders call the generated Tina client and pipe the result through
+ * `requestWithMetadata()` so the editor overlay flows in when the page
+ * renders inside the admin iframe and `tinaField()` has its metadata.
+ *
+ * Types below are pure derivations — no hand-written shapes. Each one is
+ * either inferred from a loader's return type (`CmsConfig`/`CmsPage`/
+ * `CmsBlog`) or `Extract`/index-accessed off those. The Tina collection
+ * is the source of truth; regen with `tinacms dev` and everything
+ * downstream updates.
+ */
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import matter from 'gray-matter';
+import type { TinaRichTextContent } from '@tinacms/astro';
+import { requestWithMetadata } from '@tinacms/astro/data';
+import client from '../../tina/__generated__/client';
+import { BlogDocument, CategoryDocument, ConfigDocument, PageDocument, UserDocument } from '../../tina/__generated__/types';
+
+function localContentRoots() {
+	const roots = [
+		process.cwd(),
+		process.env.PASSENGER_APP_ROOT,
+		process.env.APP_ROOT,
+		fileURLToPath(new URL('../../..', import.meta.url)),
+		fileURLToPath(new URL('../..', import.meta.url)),
+	].filter(Boolean) as string[];
+	return Array.from(new Set(roots));
+}
+
+function readFrontmatterValue(collection: 'blog' | 'page', slug?: string | null, key = 'permalink') {
+	if (!slug) return null;
+	for (const root of localContentRoots()) {
+		try {
+			const filePath = join(root, 'src', 'content', collection, slug + '.mdx');
+			const text = readFileSync(filePath, 'utf8');
+			const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+			if (!match) continue;
+			const lines = match[1].split(/\r?\n/);
+			for (const line of lines) {
+				const found = line.match(new RegExp('^' + key + '\\s*:\\s*(.*)$'));
+				if (found) {
+					let value = found[1].trim();
+					if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+						value = value.slice(1, -1);
+					}
+					return value || null;
+				}
+			}
+		} catch (_error) {
+			// Try the next possible app root.
+		}
+	}
+	return null;
+}
+
+function markdownToTinaRichText(markdown?: string | null) {
+	const children = (markdown || '')
+		.split(/\n{2,}/)
+		.map((block) => block.trim())
+		.filter(Boolean)
+		.map((block) => {
+			const heading = block.match(/^(#{1,6})\s+(.+)$/);
+			if (heading) {
+				return { type: 'h' + Math.min(6, heading[1].length), children: [{ type: 'text', text: heading[2].trim() }] };
+			}
+			return { type: 'p', children: [{ type: 'text', text: block.replace(/\n+/g, ' ') }] };
+		});
+	return { type: 'root', children };
+}
+
+function readLocalFrontmatter(collection: 'blog' | 'page', slug?: string | null) {
+	if (!slug) return null;
+	const filename = slug.endsWith('.mdx') ? slug : slug + '.mdx';
+	for (const root of localContentRoots()) {
+		try {
+			const filePath = join(root, 'src', 'content', collection, filename);
+			const parsed = matter(readFileSync(filePath, 'utf8'));
+			if (!parsed.data || !Object.keys(parsed.data).length) continue;
+			const data = { ...parsed.data } as Record<string, any>;
+			for (const key of ['pubDate', 'updatedDate']) {
+				if (data[key] instanceof Date) data[key] = data[key].toISOString();
+			}
+			return {
+				...data,
+				body: collection === 'blog' ? markdownToTinaRichText(parsed.content) : parsed.content || undefined,
+				_sys: { filename: filename.replace(/\.mdx$/, '') },
+			};
+		} catch (_error) {
+			// Try the next possible app root.
+		}
+	}
+	return null;
+}
+
+function readLocalPageFrontmatter(slug?: string | null) {
+	return readLocalFrontmatter('page', slug);
+}
+
+function readLocalBlogFrontmatter(slug?: string | null) {
+	return readLocalFrontmatter('blog', slug);
+}
+
+function readLocalJson(collection: 'category' | 'user' | 'config' | 'navigation', slug?: string | null) {
+	if (!slug) return null;
+	const requested = slug.endsWith('.json') ? slug : slug + '.json';
+	for (const root of localContentRoots()) {
+		try {
+			const dir = join(root, 'src', 'content', collection);
+			let filename = requested;
+			try {
+				const requestedLower = requested.toLowerCase();
+				const matched = readdirSync(dir).find((file) => file.toLowerCase() === requestedLower);
+				if (matched) filename = matched;
+			} catch (_error) {
+				// Fall back to requested filename.
+			}
+			const filePath = join(dir, filename);
+			const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+			return { ...parsed, _sys: { filename: filename.replace(/\.json$/, '') } };
+		} catch (_error) {
+			// Try the next possible app root.
+		}
+	}
+	return null;
+}
+
+function listLocalFrontmatter(collection: 'blog' | 'page') {
+	for (const root of localContentRoots()) {
+		try {
+			const dir = join(root, 'src', 'content', collection);
+			return readdirSync(dir)
+				.filter((file) => file.endsWith('.mdx'))
+				.flatMap((file) => {
+					const doc = readLocalFrontmatter(collection, file);
+					return doc ? [hydratePermalink(collection, doc as any)] : [];
+				});
+		} catch (_error) {
+			// Try next root.
+		}
+	}
+	return null;
+}
+
+function listLocalJson(collection: 'category' | 'user' | 'navigation') {
+	for (const root of localContentRoots()) {
+		try {
+			const dir = join(root, 'src', 'content', collection);
+			return readdirSync(dir)
+				.filter((file) => file.endsWith('.json'))
+				.flatMap((file) => {
+					const doc = readLocalJson(collection, file);
+					return doc ? [doc] : [];
+				});
+		} catch (_error) {
+			// Try the next possible app root.
+		}
+	}
+	return null;
+}
+
+function hydratePermalink<T extends { _sys?: { filename?: string | null } | null; permalink?: string | null }>(collection: 'blog' | 'page', node: T): T {
+	const permalink = node.permalink || readFrontmatterValue(collection, node._sys?.filename || null, 'permalink');
+	return permalink ? ({ ...node, permalink } as T) : node;
+}
+
+function hydrateBlogCategories<T extends Record<string, any>>(node: T): T {
+	const categories = node?.categories;
+	if (Array.isArray(categories) && categories.length) {
+		const references = categories
+			.map((item) =>
+				typeof item === 'string'
+					? item
+					: item?.category || item?._sys?.path || item?._sys?.relativePath || item?._sys?.filename,
+			)
+			.map((item) =>
+				item && !String(item).includes('/') && !String(item).endsWith('.json')
+					? `src/content/category/${item}.json`
+					: item,
+			)
+			.filter(Boolean);
+		if (references.length) {
+			const next = { ...node, categories: references } as Record<string, any>;
+			delete next.category;
+			return next as T;
+		}
+	}
+	const legacyCategory = node?.category;
+	if (legacyCategory) {
+		const references = (Array.isArray(legacyCategory) ? legacyCategory : [legacyCategory])
+			.map((item) => (typeof item === 'string' ? item : item?.category || item?._sys?.path || item?._sys?.relativePath))
+			.filter(Boolean);
+		if (references.length) {
+			const next = { ...node, categories: references } as Record<string, any>;
+			delete next.category;
+			return next as T;
+		}
+	}
+	const next = { ...node } as Record<string, any>;
+	delete next.category;
+	return next as T;
+}
+
+function tinaDirectContentApiUrl() {
+	const clientId = import.meta.env.NEXT_PUBLIC_TINA_CLIENT_ID || process.env.NEXT_PUBLIC_TINA_CLIENT_ID;
+	const branch = import.meta.env.NEXT_PUBLIC_TINA_BRANCH || import.meta.env.TINA_BRANCH || process.env.NEXT_PUBLIC_TINA_BRANCH || process.env.TINA_BRANCH || 'main';
+	if (!clientId) return null;
+	return `https://content.tinajs.io/2.4/content/${encodeURIComponent(clientId)}/github/${encodeURIComponent(branch)}`;
+}
+
+function tinaApiToken() {
+	return import.meta.env.TINA_TOKEN || process.env.TINA_TOKEN || '';
+}
+
+
+function tinaProxyEndpoints() {
+	// Do not SSR-fetch this same Passenger app's public /tina-content-proxy.
+	// Self-fetching the live domain during page render can deadlock/timeout under cPanel Passenger.
+	// Public pages must still prefer saved Tina backend data over deployed local fallbacks, so
+	// call Tina Cloud directly from SSR using the public client ID + token.
+	const endpoints = [
+		process.env.TINA_UPSTREAM_CONTENT_API_URL,
+		process.env.TINA_DIRECT_CONTENT_API_URL,
+		tinaDirectContentApiUrl(),
+	].filter(Boolean) as string[];
+	return Array.from(new Set(endpoints));
+}
+
+async function fetchGithubPageFrontmatter(relativePath: string) {
+	const branch = process.env.TINA_BRANCH || process.env.NEXT_PUBLIC_TINA_BRANCH || 'main';
+	const repo = process.env.GITHUB_CONTENT_REPO;
+	if (!repo) return null;
+	const url = `https://raw.githubusercontent.com/${repo}/${branch}/src/content/page/${relativePath}`;
+	try {
+		const response = await fetch(url, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
+		if (!response.ok) return null;
+		const text = await response.text();
+		const parsed = matter(text);
+		if (!parsed.data || !Object.keys(parsed.data).length) return null;
+		return {
+			...parsed.data,
+			_sys: { filename: relativePath.replace(/\.mdx$/, '') },
+		};
+	} catch (_error) {
+		return null;
+	}
+}
+
+async function fetchLiveTina<T>(query: string, variables?: Record<string, unknown>, pick?: (json: any) => T | null | undefined) {
+	for (const endpoint of tinaProxyEndpoints()) {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 30000);
+		try {
+			const headers: Record<string, string> = { 'content-type': 'application/json' };
+			const token = tinaApiToken();
+			if (token) headers['X-API-KEY'] = token;
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({ query, variables }),
+				cache: 'no-store',
+				signal: controller.signal,
+			});
+			if (!response.ok) continue;
+			const json = await response.json();
+			if (Array.isArray(json?.errors) && json.errors.length) continue;
+			const data = pick ? pick(json) : json?.data;
+			if (data) return data;
+		} catch (_error) {
+			// Fall back to generated Tina client/local source below.
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+	return null;
+}
+
+async function fetchLiveTinaResult<TData>(query: string, variables?: Record<string, unknown>) {
+	for (const endpoint of tinaProxyEndpoints()) {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 30000);
+		try {
+			const headers: Record<string, string> = { 'content-type': 'application/json' };
+			const token = tinaApiToken();
+			if (token) headers['X-API-KEY'] = token;
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({ query, variables }),
+				cache: 'no-store',
+				signal: controller.signal,
+			});
+			if (!response.ok) continue;
+			const json = await response.json();
+			if (Array.isArray(json?.errors) && json.errors.length) continue;
+			if (json?.data) return { data: json.data as TData, query, variables: variables ?? {} };
+		} catch (_error) {
+			// Fall back to generated Tina client/local source below.
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+	return null;
+}
+
+export async function getConfig() {
+	const query = `query Config($relativePath: String!) {
+		config(relativePath: $relativePath) {
+			headerNavigation { ... on Navigation { _sys { relativePath } } }
+			footerNavigation { ... on Navigation { _sys { relativePath } } }
+			seo { title description siteOwner logo favicon footerLogo }
+			contactForm { formspreeEndpoint heading description buttonText note subject }
+			codeInjection { headerCode footerCode }
+			contactLinks { title link icon }
+			footerStarfield
+		}
+	}`;
+	// Public rendering must prefer Tina Cloud so backend edits appear on the frontend
+	// like a real CMS. Local deployed JSON is only a fallback for outages/builds.
+	const liveConfig = await fetchLiveTina(query, { relativePath: 'config.json' }, (json) => json?.data?.config);
+	if (liveConfig) return { data: { config: liveConfig } } as any;
+
+	const localConfig = readLocalJson('config', 'config.json');
+	if (localConfig) return { data: { config: localConfig } } as any;
+	return requestWithMetadata(client.queries.config({ relativePath: 'config.json' }));
+}
+
+export const getEditableConfig = async () => {
+	const relativePath = 'config.json';
+	// Passenger must query Tina Cloud directly for editor islands. The generated
+	// browser client may point at this site's proxy, which is unsafe for an SSR
+	// self-request and can silently collapse to an empty requestWithMetadata form.
+	const live = await fetchLiveTinaResult<{ config: any }>(ConfigDocument, { relativePath });
+	if (live?.data?.config) {
+		return requestWithMetadata(Promise.resolve(live));
+	}
+
+	// Keep the generated client only as a secondary transport. Resolve it before
+	// requestWithMetadata so a rejected/empty request cannot be hidden as a form
+	// with query="" and variables={}. Local JSON is deliberately not an editor
+	// source because it lacks authoritative Tina metadata and may overwrite Cloud.
+	const generated = await client.queries.config({ relativePath });
+	if (!generated?.data?.config || !generated.query || !generated.variables) {
+		throw new Error('Global Config editor query returned no authoritative Tina document');
+	}
+	return requestWithMetadata(generated);
+};
+
+
+function navigationRelativePath(reference: unknown) {
+	if (typeof reference === 'string') {
+		const value = reference.replaceAll('\\', '/').replace(/^src\/content\/navigation\//, '');
+		return value && !value.includes('..') ? value : '';
+	}
+	if (reference && typeof reference === 'object') {
+		const sys = (reference as any)._sys;
+		const value = String(sys?.relativePath || sys?.path || '').replaceAll('\\', '/').replace(/^src\/content\/navigation\//, '');
+		return value && !value.includes('..') ? value : '';
+	}
+	return '';
+}
+
+async function getLiveNavigation(relativePath: string) {
+	if (!relativePath) return { data: { navigation: null } } as any;
+	const query = `query Navigation($relativePath: String!) {
+		navigation(relativePath: $relativePath) {
+			title
+			items { label href children { label href } }
+		}
+	}`;
+
+	// Public navigation must also be CMS-live-first; local deployed JSON is fallback only.
+	const liveNavigation = await fetchLiveTina(query, { relativePath }, (json) => json?.data?.navigation);
+	if (liveNavigation) return { data: { navigation: liveNavigation } } as any;
+
+	try {
+		const filePath = join(process.cwd(), 'src', 'content', 'navigation', relativePath);
+		const navigation = JSON.parse(readFileSync(filePath, 'utf8'));
+		if (navigation?.items) return { data: { navigation } } as any;
+	} catch (_error) {
+		// Fall through to generated client.
+	}
+
+	return requestWithMetadata(client.queries.navigation({ relativePath }));
+}
+
+export const getHeaderNavigation = (config?: any) => getLiveNavigation(navigationRelativePath(config?.headerNavigation) || 'header.json');
+
+export const getFooterNavigation = (config?: any) => getLiveNavigation(navigationRelativePath(config?.footerNavigation) || 'footer.json');
+
+
+
+export const getPage = (slug: string) =>
+	requestWithMetadata(client.queries.page({ relativePath: `${slug}.mdx` }), { priority: 'primary' });
+
+export const getEditablePage = async (slug: string) => {
+	const relativePath = slug.endsWith('.mdx') ? slug : `${slug}.mdx`;
+	// Use the authoritative Tina document directly so the Page island and the
+	// public SSR route read the same data. Do not let metadata enrichment turn a
+	// rejected generated request into an empty HTTP-200 form.
+	const live = await fetchLiveTinaResult<{ page: any }>(PageDocument, { relativePath });
+	if (live?.data?.page) {
+		return requestWithMetadata(Promise.resolve(live), { priority: 'primary' });
+	}
+
+	const generated = await client.queries.page({ relativePath });
+	if (!generated?.data?.page || !generated.query || !generated.variables) {
+		throw new Error(`Page editor query returned no authoritative Tina document: ${relativePath}`);
+	}
+	return requestWithMetadata(generated, { priority: 'primary' });
+};
+
+async function getLivePage(slug: string) {
+	const relativePath = slug.endsWith('.mdx') ? slug : slug + '.mdx';
+	const query = `query Page($relativePath: String!) {
+		page(relativePath: $relativePath) {
+			title
+			seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+			blocks {
+				__typename
+				... on PageBlocksContent { body }
+				... on PageBlocksHomepageTemplate { hero { eyebrow title description buttonText buttonLink image imageAlt } why { eyebrow title paragraphOne paragraphTwo standards { label title text } } newsroom { heading subheading submitHeading submitButtonText submitButtonLink prompts { title text } } wireFeature { eyebrow quote author byline image imageAlt } coverage { title description topics { number title text } } contact { eyebrow title description note cards { title email text accent } } }
+				... on PageBlocksAboutMockup17 { hero { eyebrow headline lede } purpose { eyebrow title paragraphOne pullquote paragraphTwo } coverage { eyebrow title intro items { number title text link } } standardsSection { eyebrow title intro items { number title text } } independence { eyebrow title image imageAlt paragraphOne paragraphTwo buttonText buttonLink } newsroom { eyebrow title intro contacts { icon title email text } } }
+				... on PageBlocksOurTeamMockup17 { hero { eyebrow headline lede } leadership { eyebrow title people { name role location image imageAlt bio } } seniorStaff { eyebrow title } }
+				... on PageBlocksContactMockup17 { hero { eyebrow headline lede } formSection { eyebrow title description buttonText note formAction subject } inboxes { eyebrow title cards { title description email note } } requests { eyebrow title intro cards { icon title text } } }
+				... on PageBlocksHero { headline tagline starfield image { src alt } actions { label type icon link } }
+				... on PageBlocksCallout { text url }
+				... on PageBlocksCta { title description actions { label type icon link } }
+				... on PageBlocksFeatures { title description items { title text icon } }
+				... on PageBlocksSplit { title body reverse image { src alt } actions { label type icon link } }
+				... on PageBlocksStats { title description stats { stat type } }
+				... on PageBlocksTestimonial { title description testimonials { quote author role avatar } }
+				... on PageBlocksVideo { url autoPlay loop }
+			}
+			_sys { filename }
+		}
+	}`;
+
+	// Public pages must be CMS-live-first so Tina backend saves appear without a redeploy.
+	const livePage = await fetchLiveTina(query, { relativePath }, (json) => json?.data?.page);
+	if (livePage) return { data: { page: livePage } } as any;
+
+	const githubPage = await fetchGithubPageFrontmatter(relativePath);
+	if (githubPage) return { data: { page: githubPage } } as any;
+
+	const localPage = readLocalPageFrontmatter(relativePath);
+	if (localPage) {
+		return {
+			data: {
+				page: {
+					...localPage,
+					_sys: { filename: relativePath.replace(/\.mdx$/, '') },
+				},
+			},
+		} as any;
+	}
+
+	return requestWithMetadata(client.queries.page({ relativePath }), { priority: 'primary' });
+}
+
+export const getPublicPage = (slug: string) => getLivePage(slug);
+
+export const getEditableBlog = async (slug: string) => {
+	const relativePath = slug.endsWith('.mdx') ? slug : `${slug}.mdx`;
+	// Query Tina Cloud directly first so Passenger never has to self-fetch the
+	// site's content proxy. Preserve the exact generated document and variables
+	// so the bridge receives a real editable Blog form.
+	const live = await fetchLiveTinaResult<{ blog: any }>(BlogDocument, { relativePath });
+	if (live?.data?.blog) {
+		return requestWithMetadata(Promise.resolve(live), { priority: 'primary' });
+	}
+
+	// Resolve and validate the generated request before metadata enrichment.
+	// requestWithMetadata intentionally swallows query failures for create flows;
+	// passing an unresolved rejection to it would therefore produce an HTTP-200
+	// island with an empty query and no usable sidebar.
+	const generated = await client.queries.blog({ relativePath });
+	if (!generated?.data?.blog || !generated.query || !generated.variables) {
+		throw new Error(`Blog editor query returned no authoritative Tina document: ${relativePath}`);
+	}
+	return requestWithMetadata(generated, { priority: 'primary' });
+};
+
+export async function getBlog(slug: string) {
+	const relativePath = slug.endsWith('.mdx') ? slug : slug + '.mdx';
+	const query = `query Blog($relativePath: String!) {
+		blog(relativePath: $relativePath) {
+			title
+			description
+			seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+			permalink
+			pubDate
+			updatedDate
+			categories
+			author { ... on User { name role avatar bio email _sys { filename } } }
+			heroImage
+			authorAlt
+			heroImageAlt
+			body
+			_sys { filename }
+		}
+	}`;
+	const liveBlog = await fetchLiveTina(query, { relativePath }, (json) => json?.data?.blog);
+	if (liveBlog) return { data: { blog: hydrateBlogCategories(hydratePermalink('blog', liveBlog as any)) } } as any;
+	const localBlog = readLocalBlogFrontmatter(relativePath);
+	if (localBlog) return { data: { blog: hydrateBlogCategories(hydratePermalink('blog', localBlog as any)) } } as any;
+	return requestWithMetadata(client.queries.blog({ relativePath }), { priority: 'primary' });
+}
+
+
+async function getLiveUser(slug: string) {
+	const relativePath = slug.endsWith('.json') ? slug : slug + '.json';
+	const query = `query User($relativePath: String!) {
+		user(relativePath: $relativePath) {
+			name
+			role
+			avatar
+			bio
+			email
+			seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+			_sys { filename }
+		}
+	}`;
+
+	const liveUser = await fetchLiveTina(query, { relativePath }, (json) => json?.data?.user);
+	if (liveUser) return { data: { user: liveUser } } as any;
+	const localUser = readLocalJson('user', relativePath);
+	if (localUser) return { data: { user: localUser } } as any;
+
+	return requestWithMetadata(client.queries.user({ relativePath }));
+}
+
+export const getEditableUser = async (slug: string) => {
+	const relativePath = slug.endsWith('.json') ? slug : `${slug}.json`;
+	try {
+		return await requestWithMetadata(client.queries.user({ relativePath }), { priority: 'primary' });
+	} catch (error) {
+		const live = await fetchLiveTinaResult<{ user: any }>(UserDocument, { relativePath });
+		if (live?.data?.user) {
+			return requestWithMetadata(Promise.resolve({
+				data: live.data,
+				query: UserDocument,
+				variables: { relativePath },
+			}), { priority: 'primary' });
+		}
+		const localUser = readLocalJson('user', relativePath);
+		if (localUser) {
+			return requestWithMetadata(Promise.resolve({
+				data: { user: localUser as any },
+				query: UserDocument,
+				variables: { relativePath },
+			}), { priority: 'primary' });
+		}
+		throw error;
+	}
+};
+
+export const getUser = (slug: string) => getLiveUser(slug);
+
+export const getEditableCategory = async (slug: string) => {
+	const relativePath = slug.endsWith('.json') ? slug : `${slug}.json`;
+	try {
+		return await requestWithMetadata(client.queries.category({ relativePath }), { priority: 'primary' });
+	} catch (error) {
+		const live = await fetchLiveTinaResult<{ category: any }>(CategoryDocument, { relativePath });
+		if (live?.data?.category) {
+			return requestWithMetadata(Promise.resolve({
+				data: live.data,
+				query: CategoryDocument,
+				variables: { relativePath },
+			}), { priority: 'primary' });
+		}
+		const localCategory = readLocalJson('category', relativePath);
+		if (localCategory) {
+			return requestWithMetadata(Promise.resolve({
+				data: { category: localCategory as any },
+				query: CategoryDocument,
+				variables: { relativePath },
+			}), { priority: 'primary' });
+		}
+		throw error;
+	}
+};
+
+export async function getCategory(slug: string) {
+	const relativePath = slug.endsWith('.json') ? slug : `${slug}.json`;
+	const query = `query Category($relativePath: String!) {
+		category(relativePath: $relativePath) {
+			title
+			description
+			seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+			_sys { filename }
+		}
+	}`;
+	const liveCategory = await fetchLiveTina(query, { relativePath }, (json) => json?.data?.category);
+	if (liveCategory) return { data: { category: liveCategory } } as any;
+	const localCategory = readLocalJson('category', relativePath);
+	if (localCategory) return { data: { category: localCategory } } as any;
+	return requestWithMetadata(client.queries.category({ relativePath }));
+}
+
+export async function listCategories() {
+	const query = `query CategoryConnection($after: String) {
+		categoryConnection(first: 100, after: $after) {
+			edges { node { title description seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow } _sys { filename relativePath path } } }
+			pageInfo { hasNextPage endCursor }
+		}
+	}`;
+	const live: any[] = [];
+	let after: string | null = null;
+	let reachedLive = false;
+	for (let page = 0; page < 100; page += 1) {
+		const connection: any = await fetchLiveTina(query, { after }, (json) => json?.data?.categoryConnection);
+		if (!connection) break;
+		reachedLive = true;
+		live.push(...(connection.edges || []).flatMap((edge: any) => edge?.node ? [edge.node] : []));
+		if (!connection.pageInfo?.hasNextPage || !connection.pageInfo?.endCursor) break;
+		after = connection.pageInfo.endCursor;
+	}
+	if (reachedLive) return live;
+	const local = listLocalJson('category');
+	if (local) return local;
+	const result = await client.queries.categoryConnection();
+	return (result.data.categoryConnection.edges || []).flatMap((edge) => edge?.node ? [edge.node] : []);
+}
+
+export async function listPages() {
+	const query = `query PageConnection {
+		pageConnection {
+			edges {
+				node {
+					title
+					permalink
+					seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+					_sys { filename }
+				}
+			}
+		}
+	}`;
+	const livePages = await fetchLiveTina(query, undefined, (json) => json?.data?.pageConnection?.edges);
+	if (Array.isArray(livePages)) {
+		return livePages
+			.flatMap((edge) => (edge?.node ? [edge.node] : []))
+			.map((node) => hydratePermalink('page', node));
+	}
+	const localPages = listLocalFrontmatter('page');
+	if (localPages) return localPages as any;
+	const result = await client.queries.pageConnection();
+	return (result.data.pageConnection.edges ?? [])
+		.flatMap((edge) => (edge?.node ? [edge.node] : []))
+		.map((node) => hydratePermalink('page', node));
+}
+
+export async function listBlogs() {
+	const query = `query BlogConnection {
+		blogConnection {
+			edges {
+				node {
+					title
+					description
+					permalink
+					pubDate
+					updatedDate
+					heroImage
+					heroImageAlt
+					seo { metaTitle metaDescription ogTitle ogDescription ogImage canonicalUrl noindex nofollow }
+					categories
+					author { ... on User { name role avatar bio email _sys { filename } } }
+					_sys { filename }
+				}
+			}
+		}
+	}`;
+	const liveBlogs = await fetchLiveTina(query, undefined, (json) => json?.data?.blogConnection?.edges);
+	const nodes = Array.isArray(liveBlogs)
+		? liveBlogs.flatMap((edge) => (edge?.node ? [edge.node] : []))
+		: null;
+	if (nodes) {
+		return nodes
+			.map((node) => hydrateBlogCategories(hydratePermalink('blog', node as any)))
+			.sort((a, b) => {
+				const ad = a.pubDate ? new Date(a.pubDate).valueOf() : 0;
+				const bd = b.pubDate ? new Date(b.pubDate).valueOf() : 0;
+				return bd - ad;
+			});
+	}
+	const localBlogs = listLocalFrontmatter('blog');
+	if (localBlogs) {
+		return (localBlogs as any[]).map((node) => hydrateBlogCategories(node)).sort((a, b) => {
+			const ad = a.pubDate ? new Date(a.pubDate).valueOf() : 0;
+			const bd = b.pubDate ? new Date(b.pubDate).valueOf() : 0;
+			return bd - ad;
+		});
+	}
+	const result = await client.queries.blogConnection();
+	return (result.data.blogConnection.edges ?? [])
+		.flatMap((edge) => (edge?.node ? [edge.node] : []))
+		.map((node) => hydrateBlogCategories(hydratePermalink('blog', node as any)))
+		.sort((a, b) => {
+			const ad = a.pubDate ? new Date(a.pubDate).valueOf() : 0;
+			const bd = b.pubDate ? new Date(b.pubDate).valueOf() : 0;
+			return bd - ad;
+		});
+}
+
+export type CmsConfig = Awaited<ReturnType<typeof getConfig>>['data']['config'];
+export type CmsPage = Awaited<ReturnType<typeof getPage>>['data']['page'];
+export type CmsBlog = Awaited<ReturnType<typeof getBlog>>['data']['blog'];
+export type CmsUser = Awaited<ReturnType<typeof getUser>>['data']['user'];
+export type CmsCategory = Awaited<ReturnType<typeof getCategory>>['data']['category'];
+
+export type PageBlock = NonNullable<NonNullable<CmsPage['blocks']>[number]>;
+export type PageBlockTypename = PageBlock['__typename'];
+
+export type HeroBlock = Extract<PageBlock, { __typename: 'PageBlocksHero' }>;
+export type CalloutBlock = Extract<PageBlock, { __typename: 'PageBlocksCallout' }>;
+export type FeaturesBlock = Extract<PageBlock, { __typename: 'PageBlocksFeatures' }>;
+export type StatsBlock = Extract<PageBlock, { __typename: 'PageBlocksStats' }>;
+export type CtaBlock = Extract<PageBlock, { __typename: 'PageBlocksCta' }>;
+export type ContentBlock = Extract<PageBlock, { __typename: 'PageBlocksContent' }>;
+export type TestimonialBlock = Extract<PageBlock, { __typename: 'PageBlocksTestimonial' }>;
+export type VideoBlock = Extract<PageBlock, { __typename: 'PageBlocksVideo' }>;
+export type SplitBlock = Extract<PageBlock, { __typename: 'PageBlocksSplit' }>;
+
+export type CmsConfigNav = any;
+export type CmsConfigFooterNav = any;
+export type CmsConfigContactLink = NonNullable<NonNullable<CmsConfig['contactLinks']>[number]>;
+export type CmsConfigSeo = NonNullable<CmsConfig['seo']>;
+
+export type Action = NonNullable<NonNullable<HeroBlock['actions']>[number]>;
+export type ImageField = NonNullable<HeroBlock['image']>;
+export type FeatureItem = NonNullable<NonNullable<FeaturesBlock['items']>[number]>;
+export type StatItem = NonNullable<NonNullable<StatsBlock['stats']>[number]>;
+export type TestimonialItem = NonNullable<NonNullable<TestimonialBlock['testimonials']>[number]>;
+
+/** Tina rich-text bodies are typed as `any` in the generated client; this is what `<TinaMarkdown>` expects. */
+export type RichText = TinaRichTextContent;

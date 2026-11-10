@@ -1,0 +1,21 @@
+---
+import TinaMarkdown from '@tinacms/astro/TinaMarkdown.astro';
+import Section from '../ui/Section.astro';
+import { tinaField } from '@tinacms/astro/tina-field';
+import { mdxComponents } from '../mdx/components';
+import type { ContentBlock } from '../../lib/data';
+
+interface Props { data: ContentBlock }
+
+const { data } = Astro.props;
+const body = data?.body || null;
+---
+<Section class="single-page-content-block prose prose-lg max-w-none">
+	<div class="mx-auto max-w-3xl" data-tina-field={tinaField(data, 'body')}>
+		{body ? (
+			<TinaMarkdown content={body} components={mdxComponents} />
+		) : (
+			<p class="text-muted-foreground">Add content in the sidebar.</p>
+		)}
+	</div>
+</Section>

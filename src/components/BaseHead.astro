@@ -1,0 +1,128 @@
+---
+// Import the global.css file here so that it is included on
+// all pages through the use of the <BaseHead /> component.
+import '../styles/global.css';
+import '../styles/ffn-brand.css';
+import '../styles/ffn-demo-pages.css';
+import { ClientRouter } from 'astro:transitions';
+
+interface Props {
+	title: string;
+	description: string;
+	image?: string;
+	ogTitle?: string;
+	ogDescription?: string;
+	canonicalUrl?: string;
+	noindex?: boolean;
+	nofollow?: boolean;
+	favicon?: string;
+}
+
+const {
+	title,
+	description,
+	image,
+	ogTitle,
+	ogDescription,
+	canonicalUrl,
+	noindex = false,
+	nofollow = false,
+	favicon = '/favicon.svg',
+} = Astro.props;
+const declaredSiteUrl = Astro.site ? new URL(Astro.site) : null;
+const requestOrigin = new URL(Astro.url.origin);
+const declaredIsLocal = declaredSiteUrl && ['localhost', '127.0.0.1', '::1'].includes(declaredSiteUrl.hostname);
+const requestIsPublic = !['localhost', '127.0.0.1', '::1'].includes(requestOrigin.hostname);
+// A copied build must never leak the starter's localhost fallback onto a real
+// domain. SITE_URL remains authoritative when configured; otherwise a public
+// request origin safely replaces only a local placeholder.
+const configuredSiteUrl = declaredIsLocal && requestIsPublic ? requestOrigin : (declaredSiteUrl || requestOrigin);
+function resolveCanonicalUrl(value?: string | URL | null) {
+	const raw = value ? value.toString() : Astro.url.pathname;
+	const url = new URL(raw, configuredSiteUrl);
+	url.search = '';
+	url.hash = '';
+	return url;
+}
+const canonicalURL = canonicalUrl ? resolveCanonicalUrl(canonicalUrl) : resolveCanonicalUrl(Astro.url.pathname);
+const socialTitle = ogTitle || title;
+const socialDescription = ogDescription || description;
+const socialImage = image || '/favicon.svg';
+function resolveSocialImageUrl(value: string) {
+	return new URL(value, configuredSiteUrl);
+}
+const socialImageURL = resolveSocialImageUrl(socialImage);
+const robots = [noindex ? 'noindex' : 'index', nofollow ? 'nofollow' : 'follow'].join(', ');
+const faviconUrl = favicon || '/favicon.svg';
+const faviconHref = favicon || '/favicon.svg';
+const faviconLower = faviconHref.toLowerCase();
+const faviconType = faviconLower.endsWith('.png')
+	? 'image/png'
+	: faviconLower.endsWith('.ico')
+		? 'image/x-icon'
+		: faviconLower.endsWith('.jpg') || faviconLower.endsWith('.jpeg')
+			? 'image/jpeg'
+			: 'image/svg+xml';
+---
+
+<script is:inline>
+	(function () {
+		function isDark() {
+			try {
+				const stored = localStorage.getItem('theme');
+				return stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+			} catch (e) {
+				return false;
+			}
+		}
+		function apply() {
+			document.documentElement.classList.toggle('dark', isDark());
+		}
+		apply();
+		// ClientRouter swaps in the SSR'd <html> (no .dark) on navigation,
+		// so re-apply the persisted theme after each swap, before paint.
+		document.addEventListener('astro:after-swap', apply);
+	})();
+</script>
+
+<!-- Global Metadata -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" href={faviconUrl} />
+<meta name="generator" content={Astro.generator} />
+
+<!-- Tina Cloud rewrites media URLs to assets.tina.io in production; warm the connection. -->
+<link rel="preconnect" href="https://assets.tina.io" crossorigin />
+<link rel="dns-prefetch" href="https://assets.tina.io" />
+
+<!-- Canonical URL -->
+<link rel="canonical" href={canonicalURL} />
+
+<!-- Primary Meta Tags -->
+<title>{title}</title>
+<meta name="title" content={title} />
+<meta name="description" content={description} />
+<meta name="robots" content={robots} />
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:title" content={socialTitle} />
+<meta property="og:description" content={socialDescription} />
+<meta property="og:image" content={socialImageURL} />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:url" content={canonicalURL} />
+<meta name="twitter:title" content={socialTitle} />
+<meta name="twitter:description" content={socialDescription} />
+<meta name="twitter:image" content={socialImageURL} />
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content={canonicalURL} />
+<meta property="twitter:title" content={socialTitle} />
+<meta property="twitter:description" content={socialDescription} />
+<meta property="twitter:image" content={socialImageURL} />
+
+<!-- TinaCMS visual editing is wired by the tina() integration in astro.config.mjs; its middleware only touches edit-mode responses, so there's nothing to add here. -->
+
+<ClientRouter />

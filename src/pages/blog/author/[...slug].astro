@@ -1,0 +1,60 @@
+---
+import Base from '../../../layouts/Base.astro';
+import TinaIsland from '@tinacms/astro/TinaIsland.astro';
+import DemoAuthorArchive from '../../../components/demo/DemoAuthorArchive.astro';
+import { getConfig, getUser, listBlogs } from '../../../lib/data';
+import { islands } from '../../../lib/islands';
+
+export const prerender = false;
+
+const POSTS_PER_PAGE = 30;
+type ReferenceObject = { title?: string | null; name?: string | null; _sys?: { filename?: string | null } | null; };
+function slugify(value?: string | null) { return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function labelFromReference(reference: unknown) {
+  if (!reference) return null;
+  if (typeof reference === 'string') return reference.split('/').pop()?.replace(/\.(json|mdx?)$/i, '').replace(/-/g, ' ') ?? null;
+  if (typeof reference === 'object') { const item = reference as ReferenceObject; return String(item.title ?? item.name ?? '') || null; }
+  return null;
+}
+function slugFromReference(reference: unknown) {
+  if (!reference) return null;
+  if (typeof reference === 'string') return slugify(reference.split('/').pop()?.replace(/\.(json|mdx?)$/i, '') || '');
+  if (typeof reference === 'object') { const item = reference as ReferenceObject; return slugify(item._sys?.filename || item.title || item.name || ''); }
+  return null;
+}
+function parseArchiveParam(value?: string) {
+  const parts = String(value || '').toLowerCase().split('/').filter(Boolean);
+  const pageIndex = parts.indexOf('page');
+  if (pageIndex >= 0) return { slug: parts.slice(0, pageIndex).join('/'), page: Math.max(1, Number(parts[pageIndex + 1] || '1') || 1) };
+  return { slug: parts.join('/'), page: 1 };
+}
+
+const parsed = parseArchiveParam(Astro.params.slug?.toString());
+const config = (await getConfig()).data?.config ?? null;
+const allPosts = (await listBlogs()).filter((post) => slugFromReference(post.author) === parsed.slug);
+const totalPages = Math.max(1, Math.ceil(allPosts.length / POSTS_PER_PAGE));
+const currentPage = Math.min(Math.max(1, parsed.page), totalPages);
+const posts = allPosts.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
+const editableAuthor = parsed.slug ? (await getUser(parsed.slug)).data?.user ?? null : null;
+const authorObject = allPosts.find((post) => post.author && typeof post.author === 'object')?.author ?? editableAuthor;
+const archiveTitle = editableAuthor?.name || labelFromReference(authorObject) || 'Author';
+const authorSeo = (editableAuthor as any)?.seo || (authorObject as any)?.seo || null;
+const title = authorSeo?.metaTitle || archiveTitle + ' Articles | ' + (config?.seo?.title || 'Digital Growth Society');
+const description = authorSeo?.metaDescription || editableAuthor?.bio || 'Read the latest articles published by ' + archiveTitle + '.';
+const basePath = '/blog/author/' + parsed.slug;
+---
+
+<Base
+  title={title}
+  description={description}
+  image={authorSeo?.ogImage || editableAuthor?.avatar || undefined}
+  ogTitle={authorSeo?.ogTitle || title}
+  ogDescription={authorSeo?.ogDescription || description}
+  canonicalUrl={authorSeo?.canonicalUrl || basePath + '/'}
+  noindex={authorSeo?.noindex || false}
+  nofollow={authorSeo?.nofollow || false}
+>
+  <TinaIsland name="author" wrapper={islands.author.wrapper} params={{ slug: parsed.slug }} primary>
+    <DemoAuthorArchive archiveTitle={archiveTitle} author={editableAuthor || authorObject} posts={posts} currentPage={currentPage} totalPages={totalPages} basePath={basePath} />
+  </TinaIsland>
+</Base>

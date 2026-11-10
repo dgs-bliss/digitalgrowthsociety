@@ -1,0 +1,41 @@
+---
+import Blocks from '../blocks/Blocks.astro';
+import FrontPage from '../../templates/FrontPage.astro';
+import { getConfig, listBlogs } from '../../lib/data';
+import DemoAboutPage from '../demo/DemoAboutPage.astro';
+import DemoContactPage from '../demo/DemoContactPage.astro';
+import DemoOurTeamPage from '../demo/DemoOurTeamPage.astro';
+import DemoPageTemplate from '../demo/DemoPageTemplate.astro';
+
+const { data, config = null } = Astro.props;
+const pageBlocks: any[] = Array.isArray(data?.blocks) ? data.blocks : [];
+const homepageTemplateBlock = pageBlocks.find((block: any) => block?._template === 'homepageTemplate' || block?.__typename === 'PageBlocksHomepageTemplate');
+const filename = data?._sys?.filename || '';
+const permalink = String(data?.permalink || '').replace(/^\/+|\/+$/g, '');
+const isHomePage = Boolean(filename === 'home' || data?.permalink === '/' || homepageTemplateBlock);
+const isAboutPage = filename === 'about' || permalink === 'about';
+const isContactPage = filename === 'contact' || permalink === 'contact';
+const isTeamPage = filename === 'our-team' || permalink === 'our-team';
+const frontPageData = data;
+const frontPagePosts = isHomePage ? await listBlogs() : [];
+const frontPageConfig = isHomePage ? ((await getConfig()).data?.config ?? config) : config;
+const isGenericDemoPage = Boolean(data && !isHomePage && !isAboutPage && !isContactPage && !isTeamPage);
+---
+
+{data && (
+  <>
+    {isHomePage ? (
+      <FrontPage posts={frontPagePosts} config={frontPageConfig} data={frontPageData} editData={data} />
+    ) : isAboutPage ? (
+      <DemoAboutPage data={data} />
+    ) : isContactPage ? (
+      <DemoContactPage data={data} config={config} />
+    ) : isTeamPage ? (
+      <DemoOurTeamPage data={data} />
+    ) : isGenericDemoPage ? (
+      <DemoPageTemplate data={data} />
+    ) : (
+      <Blocks data={data} config={config} />
+    )}
+  </>
+)}

@@ -1,0 +1,48 @@
+---
+import { tinaField } from "@tinacms/astro/tina-field";
+import type { CmsConfig } from '../lib/data';
+
+interface Props {
+  config?: CmsConfig | null;
+  navigation?: NavigationDocument | null;
+}
+
+type NavItem = {
+  label?: string | null;
+  href?: string | null;
+  children?: (NavItem | null)[] | null;
+};
+
+type NavigationDocument = {
+  title?: string | null;
+  items?: (NavItem | null)[] | null;
+};
+
+const { config, navigation } = Astro.props;
+const seo = config?.seo ?? null;
+const siteTitle = seo?.title || 'Digital Growth Society';
+const logo = seo?.logo || '';
+const menuItems = ((navigation?.items ?? []) as NavItem[]).filter((item) => item && item.label && item.href);
+---
+
+<header class="mh" data-brand-header>
+  <input class="ntog" id="ntog" type="checkbox" aria-label="Toggle navigation menu" />
+  <div class="w">
+    <div class="mh-in">
+      <a href="/" class="mh-logo-link" aria-label={`${siteTitle} home`}>
+        {logo
+          ? <img src={logo} alt={siteTitle} data-tina-field={seo ? tinaField(seo, 'logo') : undefined} />
+          : <span class="mh-text-logo" data-tina-field={seo ? tinaField(seo, 'title') : undefined}>{siteTitle}</span>}
+      </a>
+      <label class="brg" for="ntog">
+        <span class="brg-b" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Menu</span>
+      </label>
+      <nav class="mnav" aria-label={navigation?.title || 'Primary menu'}>
+        {menuItems.map((item) => (
+          <a href={item.href || '#'} data-tina-field={tinaField(item, 'label')}>{item.label}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+</header>

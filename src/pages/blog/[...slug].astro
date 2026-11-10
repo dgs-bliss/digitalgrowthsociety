@@ -1,0 +1,16 @@
+---
+import { getBlogPermalink, getBlogRouteSlug } from '../../lib/permalinks';
+import { getBlog, listBlogs } from '../../lib/data';
+
+export const prerender = false;
+
+const routeSlug = (Astro.params.slug ?? '').toString();
+const allPosts = await listBlogs();
+const matchedPost = allPosts.find((post) => getBlogRouteSlug(post) === routeSlug || post._sys.filename === routeSlug);
+const documentSlug = matchedPost?._sys.filename ?? routeSlug;
+const blog = await getBlog(documentSlug);
+const data = blog.data?.blog;
+if (!data) return new Response('Not Found', { status: 404 });
+const target = getBlogPermalink(data) + '/';
+return Astro.redirect(target, 301);
+---

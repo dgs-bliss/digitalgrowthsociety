@@ -1,0 +1,68 @@
+---
+import { tinaField } from "@tinacms/astro/tina-field";
+import type { CmsConfig } from '../lib/data';
+
+type NavItem = {
+  label?: string | null;
+  href?: string | null;
+};
+
+type NavigationDocument = {
+  title?: string | null;
+  items?: (NavItem | null)[] | null;
+};
+
+interface Props {
+  config?: CmsConfig | null;
+  navigation?: NavigationDocument | null;
+}
+
+const { config, navigation } = Astro.props;
+const currentYear = new Date().getFullYear();
+const seo = config?.seo ?? null;
+const siteTitle = seo?.title || 'Digital Growth Society';
+// Footer Logo must drive the footer when set; fall back to the main Logo and
+// then to the configured site title so a migrated site never inherits a logo.
+const footerLogo = seo?.footerLogo || seo?.logo || '';
+const footerMenuItems = ((navigation?.items ?? []) as NavItem[]).filter((item) => item && item.label && item.href);
+const fineLinks = [
+  { label: 'Privacy', href: '/privacy-policy/' },
+  { label: 'Terms', href: '/terms-of-use/' },
+  { label: 'Cookies', href: '/cookies-policy/' },
+  { label: 'Sitemap', href: '/sitemap/' },
+];
+---
+
+<footer class="ft" data-brand-footer>
+  <div class="ft-band">
+    <div class="w">
+      <div class="ft-band-in">
+        <p>Timely stories, useful insights, and clear coverage of the topics that matter.</p>
+      </div>
+    </div>
+  </div>
+  <div class="w">
+    <div class="ft-cl">
+      {footerLogo ? (
+        <img src={footerLogo} alt={siteTitle} data-tina-field={seo ? tinaField(seo, 'footerLogo') : undefined} loading="lazy" decoding="async" />
+      ) : (
+        <a class="ft-wordmark" href="/" aria-label={`${siteTitle} home`}>{siteTitle}</a>
+      )}
+      <nav class="ft-links" aria-label={navigation?.title || 'Footer menu'}>
+        {footerMenuItems.map((item) => (
+          <a href={item.href || '#'} data-tina-field={tinaField(item, 'label')}>{item.label}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+  <div class="w">
+    <div class="ft-lg">
+      <p>&copy; {currentYear} {siteTitle}. All rights reserved.</p>
+      <nav class="ft-fine" aria-label="Footer legal links">
+        {fineLinks.map((item) => (
+          <a href={item.href}>{item.label}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+</footer>

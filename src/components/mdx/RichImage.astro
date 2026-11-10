@@ -1,0 +1,20 @@
+---
+type ImageProps = {
+  url?: string;
+  src?: string;
+  alt?: string;
+  caption?: string | null;
+  title?: string;
+  children?: unknown;
+};
+
+const { url, src, alt = '', caption = null, title = '' } = Astro.props as ImageProps;
+const imageSrc = url || src;
+---
+
+{imageSrc && (
+  <figure class="tina-rich-image">
+    <img src={imageSrc} alt={alt || title || ''} loading="lazy" decoding="async" />
+    {caption && <figcaption>{caption}</figcaption>}
+  </figure>
+)}

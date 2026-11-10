@@ -1,0 +1,34 @@
+---
+import Base from '../layouts/Base.astro';
+import TinaIsland from '@tinacms/astro/TinaIsland.astro';
+import FrontPage from '../templates/FrontPage.astro';
+import { getConfig, getEditablePage, getPublicPage, listBlogs } from '../lib/data';
+import { islands } from '../lib/islands';
+
+const slug = 'home';
+const page = await getPublicPage(slug);
+const editPage = await getEditablePage(slug);
+const data = page.data?.page;
+const editData = editPage.data?.page ?? data;
+if (!data) return new Response('Not Found', { status: 404 });
+const config = (await getConfig()).data?.config ?? null;
+const posts = await listBlogs();
+const seo = data.seo ?? null;
+const title = seo?.metaTitle || data.seoTitle || config?.seo?.title || 'Digital Growth Society';
+const description = seo?.metaDescription || config?.seo?.description || 'Independent local reporting for the harbor counties.';
+---
+
+<Base
+	title={title}
+	description={description}
+	image={seo?.ogImage || undefined}
+	ogTitle={seo?.ogTitle || title}
+	ogDescription={seo?.ogDescription || description}
+	canonicalUrl={seo?.canonicalUrl || undefined}
+	noindex={seo?.noindex || false}
+	nofollow={seo?.nofollow || false}
+>
+	<TinaIsland name="page" wrapper={islands.page.wrapper} params={{ slug }} primary>
+		<FrontPage posts={posts} config={config} data={data} editData={editData} />
+	</TinaIsland>
+</Base>

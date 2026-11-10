@@ -1,0 +1,16 @@
+{
+  "schema": "astro-tina-migration-provenance-v1",
+  "runId": "dgs-20261110T080015Z",
+  "sourceAuthority": "Boilerplate live authority plus the pinned source commit below",
+  "sourceCommit": "3e609512cdd276405b6f896155acf445e108d7f7",
+  "destinationRepository": "https://github.com/dgs-bliss/digitalgrowthsociety",
+  "site": "https://digitalgrowthsociety.blissdrive.net",
+  "requestedRoutes": [
+    "/",
+    "/cookies-policy/",
+    "/privacy-policy/",
+    "/sitemap/",
+    "/terms-of-use/",
+    "/thank-you/"
+  ]
+}

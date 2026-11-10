@@ -1,0 +1,55 @@
+---
+import { tinaField } from '@tinacms/astro/tina-field';
+
+const { data = null } = Astro.props;
+const block = Array.isArray(data?.blocks) ? data.blocks[0] : data;
+const hero = block?.hero || {};
+const leadership = block?.leadership || {};
+const seniorStaff = block?.seniorStaff || {};
+const people = Array.isArray(leadership?.people) && leadership.people.length ? leadership.people : [
+  { name: 'Site Editor', role: 'Editor', location: 'Remote', image: '/placeholder.jpg', imageAlt: 'Placeholder portrait for the site editor', bio: 'Replace this sample profile with the real editor’s biography, role, location, and photo.', experience: 'Sample profile', focus: 'Replace before launch' },
+];
+const t = (value: unknown, fallback: string) => String(value || fallback);
+---
+
+<main class="ffn-demo ffn-demo-team">
+  <header class="ph"><div class="w"><div class="ph-in">
+    <div class="ph-k"><b data-tina-field={hero ? tinaField(hero, 'eyebrow') : undefined}>{t(hero.eyebrow, 'Our Team')}</b></div>
+    <h1 data-tina-field={hero ? tinaField(hero, 'headline') : undefined}>{t(hero.headline, 'The editors behind the coverage.')}</h1>
+    <p class="ph-d" data-tina-field={hero ? tinaField(hero, 'lede') : undefined}>{t(hero.lede, 'Replace these sample profiles with the people responsible for this site.')}</p>
+  </div></div></header>
+
+  <section class="sc"><div class="w">
+    <div class="eye"><i></i><span data-tina-field={leadership ? tinaField(leadership, 'eyebrow') : undefined}>{t(leadership.eyebrow, 'Editorial leadership')}</span></div>
+    <h2 class="h2" data-tina-field={leadership ? tinaField(leadership, 'title') : undefined}>{t(leadership.title, 'Who runs the newsroom')}</h2>
+    <div class="rs">
+      {people.map((person: any) => (
+        <article class="rsi">
+          {person.image ? <img class="rsi-img" src={person.image} alt={person.imageAlt || person.name || ''} data-tina-field={tinaField(person, 'image')} /> : <div class="rsi-img demo-img"></div>}
+          <div>
+            <div class="rsi-hd">
+              <div class="rsi-n" data-tina-field={tinaField(person, 'name')}>{person.name}</div>
+              <div class="rsi-r" data-tina-field={tinaField(person, 'role')}>{person.role}</div>
+            </div>
+            <p class="rsi-x" data-tina-field={tinaField(person, 'bio')}>{person.bio}</p>
+            <div class="rsi-f"><span data-tina-field={tinaField(person, 'location')}>{person.location}</span><span>{person.experience || 'Editorial desk'}</span><span>{person.focus || 'Daily coverage'}</span></div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div></section>
+
+  {Array.isArray(seniorStaff?.people) && seniorStaff.people.length > 0 && (
+    <section class="sc alt"><div class="w">
+      <div class="eye"><i></i><span data-tina-field={tinaField(seniorStaff, 'eyebrow')}>{t(seniorStaff.eyebrow, 'Senior staff')}</span></div>
+      <h2 class="h2" data-tina-field={tinaField(seniorStaff, 'title')}>{t(seniorStaff.title, 'More editors')}</h2>
+      <div class="rs">{seniorStaff.people.map((person: any) => <article class="rsi"><div><div class="rsi-hd"><div class="rsi-n" data-tina-field={tinaField(person, 'name')}>{person.name}</div><div class="rsi-r" data-tina-field={tinaField(person, 'role')}>{person.role}</div></div><p class="rsi-x" data-tina-field={tinaField(person, 'bio')}>{person.bio}</p></div></article>)}</div>
+    </div></section>
+  )}
+
+  <section class="cl"><div class="w"><div class="cl-in">
+    <h2>Found an error? Tell an editor.</h2>
+    <p>Corrections and reader concerns are handled by the editorial team responsible for the published coverage.</p>
+    <a class="cl-cta" href="/contact/">Contact Us →</a>
+  </div></div></section>
+</main>

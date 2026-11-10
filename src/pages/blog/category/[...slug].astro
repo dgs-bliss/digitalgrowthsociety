@@ -1,0 +1,18 @@
+---
+export const prerender = false;
+
+function slugify(value?: string | null) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+function parseArchiveParam(value?: string) {
+  const parts = String(value || '').toLowerCase().split('/').filter(Boolean);
+  const pageIndex = parts.indexOf('page');
+  if (pageIndex >= 0) return { slug: parts.slice(0, pageIndex).join('/'), page: Math.max(1, Number(parts[pageIndex + 1] || '1') || 1) };
+  return { slug: parts.join('/'), page: 1 };
+}
+
+const parsed = parseArchiveParam(Astro.params.slug);
+if (!parsed.slug) return Astro.redirect('/blog/', 301);
+const target = parsed.page > 1 ? `/${slugify(parsed.slug)}/page/${parsed.page}/` : `/${slugify(parsed.slug)}/`;
+return Astro.redirect(target, 301);
+---

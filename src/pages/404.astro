@@ -1,0 +1,13 @@
+---
+import Base from '../layouts/Base.astro';
+import Demo404 from '../components/demo/Demo404.astro';
+import { listBlogs } from '../lib/data';
+
+const title = '404 | Page Not Found | Digital Growth Society';
+const description = 'The page you are looking for may have moved, been removed, or never existed.';
+const posts = (await listBlogs()).slice(0, 3);
+---
+
+<Base title={title} description={description} noindex={true}>
+  <Demo404 posts={posts} />
+</Base>

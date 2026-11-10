@@ -1,0 +1,56 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../templates/Header.astro';
+import Footer from '../templates/Footer.astro';
+import { getConfig, getHeaderNavigation, getFooterNavigation } from '../lib/data';
+
+interface Props {
+	title: string;
+	description: string;
+	image?: string;
+	ogTitle?: string;
+	ogDescription?: string;
+	canonicalUrl?: string;
+	noindex?: boolean;
+	nofollow?: boolean;
+}
+
+const { title, description, image, ogTitle, ogDescription, canonicalUrl, noindex, nofollow } = Astro.props;
+const config = (await getConfig()).data?.config ?? null;
+const headerNavigation = (await getHeaderNavigation(config)).data?.navigation ?? null;
+const footerNavigation = (await getFooterNavigation(config)).data?.navigation ?? null;
+const headerCode = config?.codeInjection?.headerCode?.trim() || '';
+const footerCode = config?.codeInjection?.footerCode?.trim() || '';
+const favicon = config?.seo?.favicon || config?.favicon || '/favicon.svg';
+const defaultSocialImage = config?.seo?.defaultSocialImage || undefined;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead
+			title={title}
+			description={description}
+			image={image || defaultSocialImage}
+			ogTitle={ogTitle}
+			ogDescription={ogDescription}
+			canonicalUrl={canonicalUrl}
+
+			noindex={noindex}
+			nofollow={nofollow}
+		
+			favicon={favicon}
+		/>
+		{headerCode && <Fragment set:html={headerCode} />}
+	</head>
+	<body>
+		{/* Public Astro sites must render plain email addresses; prevent Cloudflare edge rewriting. */}
+		<Fragment set:html={'<!--email_off-->'} />
+		<div class="tr"></div>
+		<Header config={config} navigation={headerNavigation} />
+		<slot />
+		<Footer config={config} navigation={footerNavigation} />
+		{footerCode && <Fragment set:html={footerCode} />}
+		<Fragment set:html={'<!--/email_off-->'} />
+	</body>
+</html>

@@ -1,0 +1,227 @@
+﻿---
+import { Icon } from 'astro-icon/components';
+import { tinaField } from "@tinacms/astro/tina-field";
+import type { CmsConfig, CmsConfigContactLink, CmsConfigNav } from '../lib/data';
+import IconLink from "./IconLink.astro";
+import ThemeToggle from './ThemeToggle.astro';
+
+interface Props {
+	config?: CmsConfig | null;
+}
+
+const { config } = Astro.props;
+const seo = config?.seo ?? null;
+const nav = ((config?.nav ?? []) as Array<CmsConfigNav | null>).filter((item: CmsConfigNav | null): item is CmsConfigNav => item !== null);
+const contactLinks = ((config?.contactLinks ?? []) as Array<CmsConfigContactLink | null>).filter((item: CmsConfigContactLink | null): item is CmsConfigContactLink => item !== null);
+---
+
+<header class="fixed top-0 z-20 w-full border-b bg-background/50 backdrop-blur-xl">
+	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+		<a href="/" class="flex items-center gap-2 font-semibold">
+			{seo?.logo && <img src={seo.logo} alt="Logo" width="32" height="32" data-tina-field={tinaField(seo, "logo")} />}
+			<span data-tina-field={seo ? tinaField(seo, "title") : undefined}>{seo?.title}</span>
+		</a>
+		<div class="hidden items-center gap-8 text-sm lg:flex">
+			{nav.map((item: CmsConfigNav) => (
+				<a href={item.link} class="text-muted-foreground transition-colors hover:text-foreground" data-tina-field={tinaField(item, "title")}>{item.title}</a>
+			))}
+		</div>
+		<div class="flex items-center gap-3">
+			<div class="hidden items-center gap-3 lg:flex">
+				{contactLinks.map((link: CmsConfigContactLink) => (
+					<IconLink title={link.title} link={link.link} icon={link.icon} data-tina-field={tinaField(link, "title")} />
+				))}
+				<ThemeToggle />
+			</div>
+			<button
+				id="mobile-menu-toggle"
+				type="button"
+				aria-label="Toggle navigation menu"
+				aria-controls="mobile-menu-panel"
+				aria-expanded="false"
+				class="inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none lg:hidden"
+			>
+				<Icon name="tabler:menu-2" class="icon-open size-5" />
+				<Icon name="tabler:x" class="icon-close size-5" />
+			</button>
+		</div>
+	</nav>
+	<div
+		id="mobile-menu-panel"
+		hidden
+		class="border-t bg-background/95 backdrop-blur-xl lg:hidden"
+	>
+		<div class="mx-auto flex max-w-6xl flex-col px-6 py-4">
+			{nav.map((item: CmsConfigNav) => (
+				<a
+					href={item.link}
+					class="border-b border-border/50 py-3 text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
+					data-tina-field={tinaField(item, "title")}
+				>
+					{item.title}
+				</a>
+			))}
+			<div class="mt-4 flex items-center justify-between gap-3 pt-4">
+				<div class="flex items-center gap-2">
+					{contactLinks.map((link: CmsConfigContactLink) => (
+						<IconLink title={link.title} link={link.link} icon={link.icon} data-tina-field={tinaField(link, "title")} />
+					))}
+				</div>
+				<ThemeToggle />
+			</div>
+		</div>
+	</div>
+<!-- Digital Growth Society desktop nav restore toggle START -->
+<script is:inline>
+(function () {
+  function ready(fn) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  }
+
+  ready(function () {
+    var header = document.querySelector('.global-header') || document.querySelector('header');
+    if (!header) return;
+
+    var mq = window.matchMedia('(max-width: 1200px)');
+    var navSelectors = [
+      '.global-header__nav',
+      '.global-header__menu-wrap',
+      '.global-header__mobile-panel',
+      '.global-header__nav-list',
+      '.global-header__menu',
+      '.global-header__menu-list'
+    ];
+
+    function nodes() {
+      var out = [];
+      navSelectors.forEach(function (sel) {
+        Array.prototype.forEach.call(header.querySelectorAll(sel), function (el) {
+          if (out.indexOf(el) === -1) out.push(el);
+        });
+      });
+      return out;
+    }
+
+    function mainToggle() {
+      return header.querySelector('.global-header__menu-button, .global-header__menu-toggle, .global-header__mobile-toggle, .global-header__toggle, label[for="site-nav-toggle"], button[aria-label="Menu"], button[aria-label="menu"], button[aria-controls]');
+    }
+
+    function clearInlineNavDisplay() {
+      nodes().forEach(function (el) {
+        el.style.removeProperty('display');
+        el.style.removeProperty('flex-direction');
+      });
+    }
+
+    function setMobileOpen(open) {
+      if (!mq.matches) {
+        header.classList.remove('is-menu-open');
+        header.removeAttribute('data-menu-open');
+        clearInlineNavDisplay();
+        var desktopToggle = mainToggle();
+        if (desktopToggle) desktopToggle.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      header.classList.toggle('is-menu-open', open);
+      header.setAttribute('data-menu-open', open ? 'true' : 'false');
+      var toggle = mainToggle();
+      if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+      nodes().forEach(function (el) {
+        if (open) {
+          if (el.classList.contains('global-header__nav-list') || el.classList.contains('global-header__menu') || el.classList.contains('global-header__menu-list')) {
+            el.style.setProperty('display', 'flex', 'important');
+            el.style.flexDirection = 'column';
+          } else {
+            el.style.setProperty('display', 'block', 'important');
+          }
+        } else {
+          el.style.setProperty('display', 'none', 'important');
+        }
+      });
+    }
+
+    function closeSubmenus() {
+      Array.prototype.forEach.call(header.querySelectorAll('.global-header__nav-item.is-open, .global-header__menu-item.is-open'), function (item) {
+        item.classList.remove('is-open');
+      });
+      Array.prototype.forEach.call(header.querySelectorAll('.global-header__menu-link[aria-expanded="true"]'), function (link) {
+        if (!link.matches('.global-header__menu-button, .global-header__menu-toggle, .global-header__mobile-toggle, .global-header__toggle')) {
+          link.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    setMobileOpen(false);
+
+    var toggle = mainToggle();
+    if (toggle) {
+      toggle.addEventListener('click', function (event) {
+        if (!mq.matches) return;
+        event.preventDefault();
+        event.stopPropagation();
+        var willOpen = !header.classList.contains('is-menu-open');
+        setMobileOpen(willOpen);
+        if (!willOpen) closeSubmenus();
+      });
+    }
+
+    Array.prototype.forEach.call(header.querySelectorAll('.global-header__menu-link[aria-haspopup="true"], .global-header__menu-link[aria-expanded]'), function (link) {
+      if (link === toggle || link.matches('.global-header__menu-button, .global-header__menu-toggle, .global-header__mobile-toggle, .global-header__toggle')) return;
+      var next = link.nextElementSibling;
+      var hasSubmenu = next && (next.classList.contains('global-header__submenu') || next.classList.contains('global-header__dropdown') || next.tagName === 'UL');
+      if (!hasSubmenu) return;
+      link.setAttribute('aria-expanded', 'false');
+      link.addEventListener('click', function (event) {
+        if (!mq.matches) return;
+        event.preventDefault();
+        event.stopPropagation();
+        var item = link.closest('.global-header__nav-item, .global-header__menu-item, li');
+        var open = link.getAttribute('aria-expanded') === 'true';
+        link.setAttribute('aria-expanded', open ? 'false' : 'true');
+        if (item) item.classList.toggle('is-open', !open);
+      });
+    });
+
+    function onResize() { setMobileOpen(header.classList.contains('is-menu-open') && mq.matches); }
+    if (mq.addEventListener) mq.addEventListener('change', onResize);
+    else if (mq.addListener) mq.addListener(onResize);
+    window.addEventListener('resize', onResize);
+  });
+})();
+</script>
+<!-- Digital Growth Society desktop nav restore toggle END -->
+</header>
+<style>
+	#mobile-menu-toggle .icon-close { display: none; }
+	#mobile-menu-toggle[aria-expanded="true"] .icon-open { display: none; }
+	#mobile-menu-toggle[aria-expanded="true"] .icon-close { display: block; }
+</style>
+<script is:inline>
+	if (!window.__mobileMenuBound) {
+		window.__mobileMenuBound = true;
+		const setOpen = (open) => {
+			const btn = document.getElementById('mobile-menu-toggle');
+			const panel = document.getElementById('mobile-menu-panel');
+			if (!btn || !panel) return;
+			btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+			panel.hidden = !open;
+		};
+		document.addEventListener('click', (e) => {
+			const toggle = e.target.closest('#mobile-menu-toggle');
+			if (toggle) {
+				const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+				setOpen(!isOpen);
+				return;
+			}
+			if (e.target.closest('#mobile-menu-panel a')) {
+				setOpen(false);
+			}
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') setOpen(false);
+		});
+	}
+</script>

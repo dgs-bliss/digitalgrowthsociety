@@ -1,0 +1,113 @@
+---
+import { tinaField } from '@tinacms/astro/tina-field';
+
+const { data = null } = Astro.props;
+const block = Array.isArray(data?.blocks) ? data.blocks[0] : data;
+const hero = block?.hero || {};
+const purpose = block?.purpose || {};
+const coverage = block?.coverage || {};
+const standards = block?.standardsSection || {};
+const independence = block?.independence || {};
+const newsroom = block?.newsroom || {};
+const coverageItems = Array.isArray(coverage?.items) && coverage.items.length ? coverage.items : [
+  { number: '01', title: 'Business', text: 'Companies, markets, industries, and the economic forces reaching households.', link: '/business/' },
+  { number: '02', title: 'Technology', text: 'Innovation, digital trends, and the products changing how people live and work.', link: '/technology/' },
+  { number: '03', title: 'Health', text: 'Research, medical advances, and discoveries affecting everyday life.', link: '/health/' },
+  { number: '04', title: 'Politics', text: 'Government, public affairs, and decisions shaping the national conversation.', link: '/politics/' },
+  { number: '05', title: 'World', text: 'International events and global developments with wider impact.', link: '/world/' },
+  { number: '06', title: 'Lifestyle', text: 'Culture, travel, entertainment, food, and everyday life.', link: '/lifestyle/' },
+];
+const standardItems = Array.isArray(standards?.items) && standards.items.length ? standards.items : [
+  { number: '01', title: 'Clarity', text: 'We keep reporting direct, readable, and focused on the facts readers need.' },
+  { number: '02', title: 'Context', text: 'We explain why stories matter and how they connect to wider events.' },
+  { number: '03', title: 'Usefulness', text: 'We prioritize information readers can understand, share, and act on.' },
+];
+const t = (value: unknown, fallback: string) => String(value || fallback);
+---
+
+<main class="ffn-demo ffn-demo-about">
+  <!-- PAGE HEAD -->
+  <header class="ph"><div class="w"><div class="ph-in">
+    <div class="ph-k"><b data-tina-field={hero ? tinaField(hero, 'eyebrow') : undefined}>{t(hero.eyebrow, 'About Us')}</b></div>
+    <h1 data-tina-field={hero ? tinaField(hero, 'headline') : undefined}>{t(hero.headline, 'News without the noise.')}</h1>
+    <p class="ph-d" data-tina-field={hero ? tinaField(hero, 'lede') : undefined}>{t(hero.lede, 'Digital Growth Society is a general news platform created for readers who want to understand what is happening without wading through unnecessary noise. We cover timely stories, emerging trends, practical topics, and noteworthy developments that affect everyday life.')}</p>
+  </div></div></header>
+
+  <!-- CONNECTED -->
+  <section id="connected" class="sc"><div class="w">
+    <div class="eye"><i></i><span data-tina-field={purpose ? tinaField(purpose, 'eyebrow') : undefined}>{t(purpose.eyebrow, 'Why we exist')}</span></div>
+    <div class="pr2">
+      <div class="pr2-l"><h2 class="h2" data-tina-field={purpose ? tinaField(purpose, 'title') : undefined}>{t(purpose.title, 'News that keeps you connected')}</h2></div>
+      <div class="pr2-r">
+        <p data-tina-field={purpose ? tinaField(purpose, 'paragraphOne') : undefined}>{t(purpose.paragraphOne, 'Our goal is simple: help readers discover relevant information quickly while providing enough context to understand why each story matters.')}</p>
+        <p data-tina-field={purpose ? tinaField(purpose, 'paragraphTwo') : undefined}>{t(purpose.paragraphTwo, 'The world moves quickly, and important stories can emerge at any moment. Digital Growth Society brings together coverage from a broad range of subjects, giving readers one convenient place to explore the issues and ideas shaping the day.')}</p>
+        {purpose.paragraphThree && <p data-tina-field={tinaField(purpose, 'paragraphThree')}>{purpose.paragraphThree}</p>}
+      </div>
+    </div>
+  </div></section>
+
+  <!-- MORE THAN HEADLINES -->
+  <section id="headlines" class="sc alt"><div class="w">
+    <div class="eye"><i></i><span>Written for real people</span></div>
+    <div class="pr2">
+      <div class="pr2-l"><h2 class="h2">More than headlines</h2></div>
+      <div class="pr2-r">
+        <p>A headline may capture attention, but it rarely tells the whole story. We believe readers deserve content that offers context, explains key details, and makes complicated topics easier to follow.</p>
+        <div class="slab"><i>“</i><p data-tina-field={purpose ? tinaField(purpose, 'pullquote') : undefined}>{t(purpose.pullquote, 'Our aim is to make the news easier to follow without stripping away the facts that matter.')}</p></div>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- PRINCIPLES LEDGER -->
+  <section class="sc"><div class="w">
+    <div class="eye"><i></i><span data-tina-field={standards ? tinaField(standards, 'eyebrow') : undefined}>{t(standards.eyebrow, 'How we work')}</span></div>
+    <h2 class="h2" data-tina-field={standards ? tinaField(standards, 'title') : undefined}>{t(standards.title, 'Our editorial approach')}</h2>
+    <div class="pl">
+      {standardItems.map((item: any) => (
+        <div class="pli">
+          <div class="pli-n" data-tina-field={tinaField(item, 'number')}>{item.number}</div>
+          <div>
+            <div class="pli-t" data-tina-field={tinaField(item, 'title')}>{item.title}</div>
+            <p data-tina-field={tinaField(item, 'text')}>{item.text}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+    <p class="pl-note" data-tina-field={standards ? tinaField(standards, 'intro') : undefined}>{t(standards.intro, 'Digital Growth Society is built around clarity, usefulness, and consistency. We want readers to leave a story better informed than when they arrived.')}</p>
+  </div></section>
+
+  <!-- COVERAGE CARDS -->
+  <section class="sc alt"><div class="w">
+    <div class="eye"><i></i><span data-tina-field={coverage ? tinaField(coverage, 'eyebrow') : undefined}>{t(coverage.eyebrow, 'Coverage areas')}</span></div>
+    <h2 class="h2" data-tina-field={coverage ? tinaField(coverage, 'title') : undefined}>{t(coverage.title, 'What we cover')}</h2>
+    <p class="pl-note" data-tina-field={coverage ? tinaField(coverage, 'intro') : undefined}>{t(coverage.intro, 'Digital Growth Society covers a broad range of topics so readers can follow the stories shaping public life, work, culture, health, technology, and the wider world.')}</p>
+    <div class="cvg">
+      {coverageItems.map((item: any) => (
+        <a class="cvi" href={item.link || '#'}>
+          <div class="cvi-t" data-tina-field={tinaField(item, 'title')}>{item.title}</div>
+          <p class="cvi-x" data-tina-field={tinaField(item, 'text')}>{item.text}</p>
+        </a>
+      ))}
+    </div>
+  </div></section>
+
+  <!-- COMMITMENT DOC -->
+  <section class="sc"><div class="w">
+    <div class="eye"><i></i><span data-tina-field={independence ? tinaField(independence, 'eyebrow') : undefined}>{t(independence.eyebrow, 'Reader commitment')}</span></div>
+    <h2 class="h2" data-tina-field={independence ? tinaField(independence, 'title') : undefined}>{t(independence.title, 'Our commitment to readers')}</h2>
+    <div class="cd">
+      <div class="cd-top"><span>Digital Growth Society</span><b>Reader promise</b></div>
+      <div class="cd-body">
+        <p data-tina-field={independence ? tinaField(independence, 'paragraphOne') : undefined}><b>Commitment</b>{t(independence.paragraphOne, 'Readers should know what they are getting from a publication. Digital Growth Society aims to be timely without becoming careless, broad without becoming scattered, and accessible without oversimplifying important topics.')}</p>
+        <p data-tina-field={independence ? tinaField(independence, 'paragraphTwo') : undefined}><b>Standards</b>{t(independence.paragraphTwo, 'We continue to refine how stories are selected, written, updated, and corrected so the publication remains useful to the people who rely on it.')}</p>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- CLOSING BAND -->
+  <section class="cl"><div class="w"><div class="cl-in">
+    <h2 data-tina-field={newsroom ? tinaField(newsroom, 'title') : undefined}>{t(newsroom.title, 'Stay informed with Digital Growth Society')}</h2>
+    <p data-tina-field={newsroom ? tinaField(newsroom, 'intro') : undefined}>{t(newsroom.intro, 'Follow our latest stories, send tips, and contact the newsroom when you have something to share.')}</p>
+    <a class="cl-cta" href="/contact/">Contact Us →</a>
+  </div></div></section>
+</main>
