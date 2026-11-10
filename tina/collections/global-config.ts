@@ -55,6 +55,8 @@ export const GlobalConfigCollection: Collection = {
           type: "image",
           description: "Upload the logo used in the footer. Falls back to the header logo when empty.",
         },
+        { name: "footerTagline", label: "Footer Tagline", type: "string" },
+        { name: "footerCopyrightSuffix", label: "Footer Copyright Suffix", type: "string" },
       ],
     },
     {

@@ -21,28 +21,28 @@ type NavigationDocument = {
 const { config, navigation } = Astro.props;
 const seo = config?.seo ?? null;
 const siteTitle = seo?.title || 'Digital Growth Society';
-const logo = seo?.logo || '';
+const logo = seo?.logo || '/brand-assets/dgs-homepage/dgs-logo.png';
 const menuItems = ((navigation?.items ?? []) as NavItem[]).filter((item) => item && item.label && item.href);
+const action = menuItems[0] || { label: 'Apply to speak', href: '#apply' };
 ---
 
-<header class="mh" data-brand-header>
-  <input class="ntog" id="ntog" type="checkbox" aria-label="Toggle navigation menu" />
-  <div class="w">
-    <div class="mh-in">
-      <a href="/" class="mh-logo-link" aria-label={`${siteTitle} home`}>
-        {logo
-          ? <img src={logo} alt={siteTitle} data-tina-field={seo ? tinaField(seo, 'logo') : undefined} />
-          : <span class="mh-text-logo" data-tina-field={seo ? tinaField(seo, 'title') : undefined}>{siteTitle}</span>}
-      </a>
-      <label class="brg" for="ntog">
-        <span class="brg-b" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span>Menu</span>
-      </label>
-      <nav class="mnav" aria-label={navigation?.title || 'Primary menu'}>
-        {menuItems.map((item) => (
-          <a href={item.href || '#'} data-tina-field={tinaField(item, 'label')}>{item.label}</a>
-        ))}
-      </nav>
+<header class="dgs-site-header" data-brand-header>
+  <nav class="dgs-site-header__inner" aria-label={navigation?.title || 'Primary menu'}>
+    <a href="/" class="dgs-site-header__logo" aria-label={`${siteTitle}, home`}>
+      <img
+        src={logo}
+        alt={siteTitle}
+        width="119"
+        height="44"
+        data-tina-field={seo ? tinaField(seo, 'logo') : undefined}
+      />
+    </a>
+    <div class="dgs-site-header__actions">
+      <a
+        class="dgs-site-header__cta"
+        href={action.href || '#apply'}
+        data-tina-field={navigation ? tinaField(action, 'label') : undefined}
+      >{action.label || 'Apply to speak'}</a>
     </div>
-  </div>
+  </nav>
 </header>

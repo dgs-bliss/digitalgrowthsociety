@@ -1,0 +1,136 @@
+.dgs-site-header,
+.dgs-site-footer {
+  font-family: 'Public Sans', system-ui, sans-serif;
+  color: #0A2240;
+}
+
+.dgs-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #FFFFFF;
+  border-bottom: 1px solid #DADFE3;
+}
+
+.dgs-site-header__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dgs-site-header__logo,
+.dgs-site-header__logo:hover {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0A2240;
+  text-decoration: none;
+}
+
+.dgs-site-header__logo img,
+.dgs-site-footer__brand img {
+  display: block;
+  width: 119px;
+  height: 44px;
+  max-width: none;
+  object-fit: contain;
+}
+
+.dgs-site-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+  font-size: 17px;
+}
+
+.dgs-site-header__cta,
+.dgs-site-header__cta:hover {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  background: #0A2240;
+  color: #FFFFFF;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: normal;
+  padding: 12px 20px;
+  border-radius: 2px;
+}
+
+.dgs-site-footer {
+  border-top: 1px solid #DADFE3;
+  background: #F5F8FC;
+}
+
+.dgs-site-footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.dgs-site-footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dgs-site-footer__brand > span {
+  font-size: 13.5px;
+  line-height: normal;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #1F4E8C;
+}
+
+.dgs-site-footer__meta,
+.dgs-site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  font-size: 16px;
+  color: #5A6474;
+}
+
+.dgs-site-footer__links a,
+.dgs-site-footer__links a:hover {
+  color: #5A6474;
+}
+
+@media (max-width: 600px) {
+  .dgs-site-header__inner {
+    padding: 14px 18px;
+  }
+
+  .dgs-site-header__logo img {
+    width: 108px;
+    height: auto;
+  }
+
+  .dgs-site-header__cta,
+  .dgs-site-header__cta:hover {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .dgs-site-footer__inner {
+    padding: 32px 18px;
+    align-items: flex-start;
+  }
+
+  .dgs-site-footer__meta {
+    align-items: flex-start;
+  }
+}

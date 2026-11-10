@@ -321,7 +321,7 @@ export async function getConfig() {
 		config(relativePath: $relativePath) {
 			headerNavigation { ... on Navigation { _sys { relativePath } } }
 			footerNavigation { ... on Navigation { _sys { relativePath } } }
-			seo { title description siteOwner logo favicon footerLogo }
+			seo { title description siteOwner logo favicon footerLogo footerTagline footerCopyrightSuffix }
 			contactForm { formspreeEndpoint heading description buttonText note subject }
 			codeInjection { headerCode footerCode }
 			contactLinks { title link icon }

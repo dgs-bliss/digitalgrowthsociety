@@ -2,24 +2,8 @@
   "title": "Header Navigation",
   "items": [
     {
-      "label": "Home",
-      "href": "/"
-    },
-    {
-      "label": "Cookies Policy",
-      "href": "/cookies-policy/"
-    },
-    {
-      "label": "Privacy Policy",
-      "href": "/privacy-policy/"
-    },
-    {
-      "label": "Terms of Use",
-      "href": "/terms-of-use/"
-    },
-    {
-      "label": "Sitemap",
-      "href": "/sitemap/"
+      "label": "Apply to speak",
+      "href": "/#apply"
     }
   ]
 }

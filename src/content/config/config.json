@@ -5,9 +5,11 @@
     "title": "Digital Growth Society",
     "description": "Practical reporting, ideas, and perspectives for navigating digital growth.",
     "siteOwner": "Ruth Goodwin",
-    "logo": "",
+    "logo": "/brand-assets/dgs-homepage/dgs-logo.png",
     "favicon": "/favicon.svg",
-    "footerLogo": ""
+    "footerLogo": "/brand-assets/dgs-homepage/dgs-logo.png",
+    "footerTagline": "Greater together · Since 2019",
+    "footerCopyrightSuffix": "A nonprofit mastermind"
   },
   "contactForm": {
     "formspreeEndpoint": "https://formspree.io/f/xkjjdbok",

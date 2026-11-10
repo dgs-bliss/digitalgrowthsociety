@@ -2,24 +2,16 @@
   "title": "Footer Menu",
   "items": [
     {
-      "label": "Home",
-      "href": "/"
-    },
-    {
-      "label": "Cookies Policy",
-      "href": "/cookies-policy/"
-    },
-    {
-      "label": "Privacy Policy",
+      "label": "Privacy",
       "href": "/privacy-policy/"
     },
     {
-      "label": "Terms of Use",
+      "label": "Terms",
       "href": "/terms-of-use/"
     },
     {
-      "label": "Sitemap",
-      "href": "/sitemap/"
+      "label": "Cookies",
+      "href": "/cookies-policy/"
     }
   ]
 }
