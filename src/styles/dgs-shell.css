@@ -36,8 +36,8 @@
 .dgs-site-header__logo img,
 .dgs-site-footer__brand img {
   display: block;
-  width: 119px;
-  height: 44px;
+  width: 72px;
+  height: auto;
   max-width: none;
   object-fit: contain;
 }
@@ -117,8 +117,8 @@
   }
 
   .dgs-site-header__logo img {
-    width: 119px;
-    height: 44px;
+    width: 72px;
+    height: auto;
   }
 
   .dgs-site-header__cta,
